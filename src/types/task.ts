@@ -10,6 +10,10 @@ export interface Task {
   tags: string[];
   status: 'complete' | 'incomplete';
   recurrence?: 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
+  recurrence_end_date?: string;
+  parent_task_id?: string;
+  next_occurrence?: string;
+  is_template?: boolean;
   priority: 'low' | 'medium' | 'high';
   category: string;
   order_position: number;

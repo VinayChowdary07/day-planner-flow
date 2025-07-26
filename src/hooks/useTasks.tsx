@@ -67,23 +67,35 @@ export const useTasks = () => {
     if (!user || !taskData.title || !taskData.task_date) return;
 
     try {
+      // Handle empty time fields to prevent PostgreSQL errors
+      const insertData: any = {
+        title: taskData.title,
+        task_date: taskData.task_date,
+        user_id: user.id,
+        status: 'incomplete' as const,
+        order_position: tasks.length,
+        description: taskData.description || null,
+        start_time: taskData.start_time?.trim() || null,
+        end_time: taskData.end_time?.trim() || null,
+        location: taskData.location || null,
+        tags: taskData.tags || [],
+        priority: taskData.priority || 'medium',
+        category: taskData.category || 'general',
+        recurrence: taskData.recurrence || 'none',
+        recurrence_end_date: taskData.recurrence_end_date || null,
+        is_template: taskData.recurrence && taskData.recurrence !== 'none',
+      };
+
+      // Set next_occurrence for recurring tasks
+      if (taskData.recurrence && taskData.recurrence !== 'none') {
+        const nextDay = new Date(taskData.task_date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        insertData.next_occurrence = nextDay.toISOString();
+      }
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert({
-          title: taskData.title,
-          task_date: taskData.task_date,
-          user_id: user.id,
-          status: 'incomplete' as const,
-          order_position: tasks.length,
-          description: taskData.description || null,
-          start_time: taskData.start_time || null,
-          end_time: taskData.end_time || null,
-          location: taskData.location || null,
-          tags: taskData.tags || [],
-          priority: taskData.priority || 'medium',
-          category: taskData.category || 'general',
-          recurrence: taskData.recurrence || 'none',
-        })
+        .insert(insertData)
         .select()
         .single();
 

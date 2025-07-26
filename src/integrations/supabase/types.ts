@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      goal_tasks: {
+        Row: {
+          created_at: string
+          goal_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_tasks_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          start_date: string | null
+          target_count: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          target_count?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          target_count?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -86,10 +158,14 @@ export type Database = {
           description: string | null
           end_time: string | null
           id: string
+          is_template: boolean | null
           location: string | null
+          next_occurrence: string | null
           order_position: number | null
+          parent_task_id: string | null
           priority: string
           recurrence: string | null
+          recurrence_end_date: string | null
           start_time: string | null
           status: string
           tags: string[] | null
@@ -104,10 +180,14 @@ export type Database = {
           description?: string | null
           end_time?: string | null
           id?: string
+          is_template?: boolean | null
           location?: string | null
+          next_occurrence?: string | null
           order_position?: number | null
+          parent_task_id?: string | null
           priority?: string
           recurrence?: string | null
+          recurrence_end_date?: string | null
           start_time?: string | null
           status?: string
           tags?: string[] | null
@@ -122,10 +202,14 @@ export type Database = {
           description?: string | null
           end_time?: string | null
           id?: string
+          is_template?: boolean | null
           location?: string | null
+          next_occurrence?: string | null
           order_position?: number | null
+          parent_task_id?: string | null
           priority?: string
           recurrence?: string | null
+          recurrence_end_date?: string | null
           start_time?: string | null
           status?: string
           tags?: string[] | null
@@ -134,7 +218,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Task } from '@/types/task';
+import { Goal } from '@/types/goal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { X, Plus } from 'lucide-react';
+import { useGoals } from '@/hooks/useGoals';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -22,6 +25,7 @@ const taskSchema = z.object({
   priority: z.enum(['low', 'medium', 'high']),
   category: z.string(),
   recurrence: z.enum(['none', 'daily', 'weekly', 'monthly', 'custom']).optional(),
+  recurrence_end_date: z.string().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -29,7 +33,7 @@ type TaskFormData = z.infer<typeof taskSchema>;
 interface TaskFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Task>) => Promise<void>;
+  onSubmit: (data: Partial<Task>, goalIds?: string[]) => Promise<void>;
   task?: Task | null;
   defaultDate?: string;
 }
@@ -58,6 +62,12 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [newGoalTitle, setNewGoalTitle] = useState('');
+  const [showNewGoalInput, setShowNewGoalInput] = useState(false);
+  const [linkingGoals, setLinkingGoals] = useState(false);
+  
+  const { goals, createGoal } = useGoals();
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -86,6 +96,7 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
         priority: task.priority as 'low' | 'medium' | 'high',
         category: task.category,
         recurrence: task.recurrence as 'none' | 'daily' | 'weekly' | 'monthly' | 'custom' || 'none',
+        recurrence_end_date: task.recurrence_end_date || '',
       });
       setTags(task.tags || []);
     } else {
@@ -99,24 +110,42 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
         priority: 'medium',
         category: 'general',
         recurrence: 'none',
+        recurrence_end_date: '',
       });
       setTags([]);
+      setSelectedGoals([]);
+      setNewGoalTitle('');
+      setShowNewGoalInput(false);
     }
   }, [task, defaultDate, form]);
 
   const handleSubmit = async (data: TaskFormData) => {
     setLoading(true);
+    setLinkingGoals(true);
+    
     try {
+      // Handle new goal creation if needed
+      let finalGoalIds = [...selectedGoals];
+      
+      if (showNewGoalInput && newGoalTitle.trim()) {
+        const newGoal = await createGoal({ title: newGoalTitle.trim() });
+        if (newGoal) {
+          finalGoalIds.push(newGoal.id);
+        }
+      }
+
       await onSubmit({
         ...data,
         tags,
         id: task?.id,
-      });
+      }, finalGoalIds);
+      
       onClose();
     } catch (error) {
       console.error('Error submitting task:', error);
     } finally {
       setLoading(false);
+      setLinkingGoals(false);
     }
   };
 
@@ -316,6 +345,95 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
                 </FormItem>
               )}
             />
+
+            {/* Recurrence End Date - only show for recurring tasks */}
+            {form.watch('recurrence') !== 'none' && (
+              <FormField
+                control={form.control}
+                name="recurrence_end_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        placeholder="Leave empty for indefinite recurrence"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Goals Section */}
+            <div className="space-y-3">
+              <FormLabel>Link to Goals</FormLabel>
+              
+              {goals.length > 0 && (
+                <div className="space-y-2">
+                  {goals.map((goal) => (
+                    <div key={goal.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`goal-${goal.id}`}
+                        checked={selectedGoals.includes(goal.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedGoals([...selectedGoals, goal.id]);
+                          } else {
+                            setSelectedGoals(selectedGoals.filter(id => id !== goal.id));
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor={`goal-${goal.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {goal.title}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Create New Goal Option */}
+              <div className="pt-2 border-t">
+                {!showNewGoalInput ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowNewGoalInput(true)}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Goal
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="New goal title"
+                      value={newGoalTitle}
+                      onChange={(e) => setNewGoalTitle(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowNewGoalInput(false);
+                          setNewGoalTitle('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="space-y-2">
               <FormLabel>Tags</FormLabel>

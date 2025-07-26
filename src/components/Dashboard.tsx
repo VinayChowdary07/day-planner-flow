@@ -10,13 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Search, LogOut, Calendar, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, LogOut, Calendar, CheckCircle, Clock, AlertCircle, Target } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useGoals } from '@/hooks/useGoals';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { tasks, loading, createTask, updateTask, deleteTask, toggleTaskComplete, reorderTasks, filterTasks } = useTasks();
+  const { linkTaskToGoal } = useGoals();
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filters, setFilters] = useState<TaskFilters>({
@@ -62,8 +65,18 @@ const Dashboard = () => {
     }
   };
 
-  const handleCreateTask = async (taskData: Partial<Task>) => {
-    await createTask(taskData);
+  const handleCreateTask = async (taskData: Partial<Task>, goalIds?: string[]) => {
+    const newTask = await createTask(taskData);
+    if (newTask && goalIds && goalIds.length > 0) {
+      // Link task to goals if provided
+      for (const goalId of goalIds) {
+        try {
+          await linkTaskToGoal(goalId, newTask.id);
+        } catch (error) {
+          console.error('Error linking task to goal:', error);
+        }
+      }
+    }
     setIsTaskFormOpen(false);
   };
 
@@ -101,6 +114,12 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center gap-3">
+              <Button variant="outline" asChild>
+                <Link to="/goals">
+                  <Target className="h-4 w-4 mr-2" />
+                  Goals
+                </Link>
+              </Button>
               <Avatar>
                 <AvatarFallback>
                   {user?.email?.charAt(0).toUpperCase()}
