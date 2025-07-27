@@ -56,7 +56,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       priority: task?.priority || 'medium',
       category: task?.category || 'general',
       location: task?.location || '',
-      project_id: task?.project_id || '',
+      project_id: task?.project_id || 'none',
       tags: task?.tags || [],
       recurrence: task?.recurrence || 'none',
       recurrence_end_date: task?.recurrence_end_date || '',
@@ -70,7 +70,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
     try {
       const taskData = {
         ...data,
-        project_id: data.project_id || null,
+        project_id: data.project_id === 'none' ? null : data.project_id,
         tags: data.tags || [],
         start_time: data.start_time || null,
         end_time: data.end_time || null,
@@ -246,7 +246,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No project</SelectItem>
+                        <SelectItem value="none">No project</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             <div className="flex items-center gap-2">
