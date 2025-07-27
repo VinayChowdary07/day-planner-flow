@@ -1,183 +1,123 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Task } from '@/types/task';
-import { Goal } from '@/types/goal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useTasks } from '@/hooks/useTasks';
+import { useProjects } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { X, Plus } from 'lucide-react';
-import { useGoals } from '@/hooks/useGoals';
+import { Calendar, Plus, X } from 'lucide-react';
+import { format } from 'date-fns';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  task_date: z.string(),
+  task_date: z.string().min(1, 'Date is required'),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
-  location: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high']),
-  category: z.string(),
-  recurrence: z.enum(['none', 'daily', 'weekly', 'monthly', 'custom']).optional(),
+  category: z.string().optional(),
+  location: z.string().optional(),
+  project_id: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']).optional(),
   recurrence_end_date: z.string().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
 
 interface TaskFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: Partial<Task>, goalIds?: string[]) => Promise<void>;
-  task?: Task | null;
-  defaultDate?: string;
+  task?: Task;
+  onSuccess?: () => void;
 }
 
-const categories = [
-  { value: 'work', label: 'Work' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'health', label: 'Health' },
-  { value: 'general', label: 'General' },
-];
-
-const priorities = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-];
-
-const recurrenceOptions = [
-  { value: 'none', label: 'None' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-];
-
-export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskFormProps) => {
-  const [tags, setTags] = useState<string[]>([]);
+export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTag, setNewTag] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
-  const [newGoalTitle, setNewGoalTitle] = useState('');
-  const [showNewGoalInput, setShowNewGoalInput] = useState(false);
-  const [linkingGoals, setLinkingGoals] = useState(false);
-  
-  const { goals, createGoal } = useGoals();
+  const { createTask, updateTask } = useTasks();
+  const { projects } = useProjects();
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
-      title: '',
-      description: '',
-      task_date: defaultDate || new Date().toISOString().split('T')[0],
-      start_time: '',
-      end_time: '',
-      location: '',
-      priority: 'medium',
-      category: 'general',
-      recurrence: 'none',
+      title: task?.title || '',
+      description: task?.description || '',
+      task_date: task?.task_date || format(new Date(), 'yyyy-MM-dd'),
+      start_time: task?.start_time || '',
+      end_time: task?.end_time || '',
+      priority: task?.priority || 'medium',
+      category: task?.category || 'general',
+      location: task?.location || '',
+      project_id: task?.project_id || '',
+      tags: task?.tags || [],
+      recurrence: task?.recurrence || 'none',
+      recurrence_end_date: task?.recurrence_end_date || '',
     },
   });
 
-  useEffect(() => {
-    if (task) {
-      form.reset({
-        title: task.title,
-        description: task.description || '',
-        task_date: task.task_date,
-        start_time: task.start_time || '',
-        end_time: task.end_time || '',
-        location: task.location || '',
-        priority: task.priority as 'low' | 'medium' | 'high',
-        category: task.category,
-        recurrence: task.recurrence as 'none' | 'daily' | 'weekly' | 'monthly' | 'custom' || 'none',
-        recurrence_end_date: task.recurrence_end_date || '',
-      });
-      setTags(task.tags || []);
-    } else {
-      form.reset({
-        title: '',
-        description: '',
-        task_date: defaultDate || new Date().toISOString().split('T')[0],
-        start_time: '',
-        end_time: '',
-        location: '',
-        priority: 'medium',
-        category: 'general',
-        recurrence: 'none',
-        recurrence_end_date: '',
-      });
-      setTags([]);
-      setSelectedGoals([]);
-      setNewGoalTitle('');
-      setShowNewGoalInput(false);
-    }
-  }, [task, defaultDate, form]);
+  const watchedTags = form.watch('tags') || [];
 
-  const handleSubmit = async (data: TaskFormData) => {
-    setLoading(true);
-    setLinkingGoals(true);
-    
+  const onSubmit = async (data: TaskFormData) => {
+    setIsSubmitting(true);
     try {
-      // Handle new goal creation if needed
-      let finalGoalIds = [...selectedGoals];
-      
-      if (showNewGoalInput && newGoalTitle.trim()) {
-        const newGoal = await createGoal({ title: newGoalTitle.trim() });
-        if (newGoal) {
-          finalGoalIds.push(newGoal.id);
-        }
-      }
-
-      await onSubmit({
+      const taskData = {
         ...data,
-        tags,
-        id: task?.id,
-      }, finalGoalIds);
+        project_id: data.project_id || null,
+        tags: data.tags || [],
+        start_time: data.start_time || null,
+        end_time: data.end_time || null,
+        recurrence_end_date: data.recurrence_end_date || null,
+      };
+
+      if (task) {
+        await updateTask(task.id, taskData);
+      } else {
+        await createTask(taskData);
+      }
       
-      onClose();
+      form.reset();
+      setOpen(false);
+      onSuccess?.();
     } catch (error) {
-      console.error('Error submitting task:', error);
+      console.error('Error saving task:', error);
     } finally {
-      setLoading(false);
-      setLinkingGoals(false);
+      setIsSubmitting(false);
     }
   };
 
   const addTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
+    if (newTag.trim() && !watchedTags.includes(newTag.trim())) {
+      form.setValue('tags', [...watchedTags, newTag.trim()]);
       setNewTag('');
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addTag();
-    }
+    form.setValue('tags', watchedTags.filter(tag => tag !== tagToRemove));
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          {task ? 'Edit Task' : 'New Task'}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {task ? 'Edit Task' : 'Create New Task'}
-          </DialogTitle>
+          <DialogTitle>{task ? 'Edit Task' : 'Create New Task'}</DialogTitle>
         </DialogHeader>
-
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -185,7 +125,7 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Task title" {...field} />
+                    <Input placeholder="Enter task title" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -199,10 +139,8 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Task description (optional)"
-                      className="resize-none"
-                      rows={3}
+                    <Textarea 
+                      placeholder="Enter task description (optional)"
                       {...field}
                     />
                   </FormControl>
@@ -211,12 +149,12 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
               )}
             />
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="task_date"
                 render={({ field }) => (
-                  <FormItem className="col-span-3">
+                  <FormItem>
                     <FormLabel>Date</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
@@ -226,6 +164,31 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="start_time"
@@ -255,6 +218,54 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Work, Personal" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="project_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select project (optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">No project</SelectItem>
+                        {projects.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: project.color }}
+                              />
+                              {project.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="location"
@@ -262,212 +273,94 @@ export const TaskForm = ({ isOpen, onClose, onSubmit, task, defaultDate }: TaskF
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <Input placeholder="Location (optional)" {...field} />
+                    <Input placeholder="Enter location (optional)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-2">
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {priorities.map((priority) => (
-                          <SelectItem key={priority.value} value={priority.value}>
-                            {priority.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="recurrence"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Recurrence</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {recurrenceOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Recurrence End Date - only show for recurring tasks */}
-            {form.watch('recurrence') !== 'none' && (
-              <FormField
-                control={form.control}
-                name="recurrence_end_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="date" 
-                        {...field} 
-                        placeholder="Leave empty for indefinite recurrence"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Goals Section */}
-            <div className="space-y-3">
-              <FormLabel>Link to Goals</FormLabel>
-              
-              {goals.length > 0 && (
-                <div className="space-y-2">
-                  {goals.map((goal) => (
-                    <div key={goal.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`goal-${goal.id}`}
-                        checked={selectedGoals.includes(goal.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedGoals([...selectedGoals, goal.id]);
-                          } else {
-                            setSelectedGoals(selectedGoals.filter(id => id !== goal.id));
-                          }
-                        }}
-                      />
-                      <label 
-                        htmlFor={`goal-${goal.id}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {goal.title}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Create New Goal Option */}
-              <div className="pt-2 border-t">
-                {!showNewGoalInput ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowNewGoalInput(true)}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Goal
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="New goal title"
-                      value={newGoalTitle}
-                      onChange={(e) => setNewGoalTitle(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowNewGoalInput(false);
-                          setNewGoalTitle('');
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
             <div className="space-y-2">
               <FormLabel>Tags</FormLabel>
-              <div className="flex flex-wrap gap-1 mb-2">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                    {tag}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() => removeTag(tag)}
-                    />
-                  </Badge>
-                ))}
-              </div>
               <div className="flex gap-2">
                 <Input
                   placeholder="Add tag"
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="flex-1"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
                 />
-                <Button type="button" onClick={addTag} variant="outline" size="sm">
+                <Button type="button" onClick={addTag} variant="outline">
                   Add
                 </Button>
               </div>
+              {watchedTags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {watchedTags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                      <X 
+                        className="h-3 w-3 ml-1 cursor-pointer" 
+                        onClick={() => removeTag(tag)}
+                      />
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="recurrence"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Recurrence</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select recurrence" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('recurrence') !== 'none' && (
+                <FormField
+                  control={form.control}
+                  name="recurrence_end_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recurrence End Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'Saving...' : task ? 'Update' : 'Create'}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : (task ? 'Update' : 'Create')}
               </Button>
             </div>
           </form>

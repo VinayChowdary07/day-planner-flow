@@ -151,6 +151,39 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           category: string | null
@@ -164,6 +197,7 @@ export type Database = {
           order_position: number | null
           parent_task_id: string | null
           priority: string
+          project_id: string | null
           recurrence: string | null
           recurrence_end_date: string | null
           start_time: string | null
@@ -186,6 +220,7 @@ export type Database = {
           order_position?: number | null
           parent_task_id?: string | null
           priority?: string
+          project_id?: string | null
           recurrence?: string | null
           recurrence_end_date?: string | null
           start_time?: string | null
@@ -208,6 +243,7 @@ export type Database = {
           order_position?: number | null
           parent_task_id?: string | null
           priority?: string
+          project_id?: string | null
           recurrence?: string | null
           recurrence_end_date?: string | null
           start_time?: string | null
@@ -224,6 +260,13 @@ export type Database = {
             columns: ["parent_task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
