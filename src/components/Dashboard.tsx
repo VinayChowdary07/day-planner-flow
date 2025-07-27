@@ -3,18 +3,15 @@ import { useState } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { TasksDashboard } from '@/components/TasksDashboard';
-import { GoalsDashboard } from '@/components/GoalsDashboard';
 import { ProjectsDashboard } from '@/components/ProjectsDashboard';
 
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState<'tasks' | 'goals' | 'projects'>('tasks');
+  const [activeSection, setActiveSection] = useState<'tasks' | 'projects'>('tasks');
 
   const renderContent = () => {
     switch (activeSection) {
       case 'tasks':
         return <TasksDashboard />;
-      case 'goals':
-        return <GoalsDashboard />;
       case 'projects':
         return <ProjectsDashboard />;
       default:

@@ -1,10 +1,11 @@
+
 import { useState } from 'react';
 import { Task } from '@/types/task';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clock, MapPin, Edit2, Trash2, MoreVertical } from 'lucide-react';
+import { Clock, MapPin, Edit2, Trash2, MoreVertical, Calendar, Tag } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -17,16 +18,23 @@ interface TaskCardProps {
 }
 
 const priorityColors = {
-  low: 'bg-blue-500/10 text-blue-700 border-blue-200',
-  medium: 'bg-yellow-500/10 text-yellow-700 border-yellow-200',
-  high: 'bg-red-500/10 text-red-700 border-red-200',
+  low: 'bg-blue-50 text-blue-700 border-blue-200',
+  medium: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  high: 'bg-red-50 text-red-700 border-red-200',
+};
+
+const priorityIcons = {
+  low: '🔵',
+  medium: '🟡',
+  high: '🔴',
 };
 
 const categoryColors = {
-  work: 'bg-purple-500/10 text-purple-700',
-  personal: 'bg-green-500/10 text-green-700',
-  health: 'bg-pink-500/10 text-pink-700',
-  general: 'bg-gray-500/10 text-gray-700',
+  work: 'bg-purple-50 text-purple-700 border-purple-200',
+  personal: 'bg-green-50 text-green-700 border-green-200',
+  health: 'bg-pink-50 text-pink-700 border-pink-200',
+  finance: 'bg-orange-50 text-orange-700 border-orange-200',
+  general: 'bg-gray-50 text-gray-700 border-gray-200',
 };
 
 export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete }: TaskCardProps) => {
@@ -59,14 +67,24 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete }: TaskCardP
     });
   };
 
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString([], {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`transition-all duration-200 hover:shadow-md ${
-        task.status === 'complete' ? 'opacity-75' : ''
-      } ${isDragging ? 'shadow-lg' : ''}`}
+      className={`transition-all duration-200 hover:shadow-lg border-l-4 ${
+        task.status === 'complete' 
+          ? 'opacity-75 border-l-green-400 bg-green-50/30' 
+          : 'border-l-primary hover:border-l-primary/80'
+      } ${isDragging ? 'shadow-xl z-10' : ''}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
@@ -74,90 +92,99 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete }: TaskCardP
             checked={task.status === 'complete'}
             onCheckedChange={handleToggleComplete}
             disabled={isCompleting}
-            className="mt-1"
+            className="mt-1 h-5 w-5"
           />
           
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <h3
-                className={`font-medium text-sm leading-tight ${
-                  task.status === 'complete' ? 'line-through text-muted-foreground' : ''
-                }`}
-              >
-                {task.title}
-              </h3>
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <div className="flex-1">
+                <h3
+                  className={`font-semibold text-base leading-tight mb-1 ${
+                    task.status === 'complete' ? 'line-through text-muted-foreground' : 'text-foreground'
+                  }`}
+                >
+                  {task.title}
+                </h3>
+                
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <Calendar className="h-3 w-3" />
+                  <span>{formatDate(task.task_date)}</span>
+                  {(task.start_time || task.end_time) && (
+                    <>
+                      <Clock className="h-3 w-3 ml-2" />
+                      <span>
+                        {task.start_time && formatTime(task.start_time)}
+                        {task.start_time && task.end_time && ' - '}
+                        {task.end_time && formatTime(task.end_time)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(task)}>
                     <Edit2 className="h-4 w-4 mr-2" />
-                    Edit
+                    Edit Task
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onDelete(task.id)}
-                    className="text-destructive"
+                    className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
+                    Delete Task
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
             {task.description && (
-              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                 {task.description}
               </p>
             )}
 
-            <div className="flex flex-wrap gap-1 mb-2">
+            <div className="flex flex-wrap gap-2 mb-3">
               <Badge
                 variant="outline"
-                className={`text-xs ${priorityColors[task.priority as keyof typeof priorityColors]}`}
+                className={`text-xs font-medium ${priorityColors[task.priority as keyof typeof priorityColors]}`}
               >
-                {task.priority}
+                <span className="mr-1">{priorityIcons[task.priority as keyof typeof priorityIcons]}</span>
+                {task.priority} priority
               </Badge>
+              
               <Badge
                 variant="outline"
-                className={`text-xs ${categoryColors[task.category as keyof typeof categoryColors]}`}
+                className={`text-xs font-medium ${categoryColors[task.category as keyof typeof categoryColors]}`}
               >
                 {task.category}
               </Badge>
+              
               {task.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
+                  <Tag className="h-3 w-3 mr-1" />
                   {tag}
                 </Badge>
               ))}
             </div>
 
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              {(task.start_time || task.end_time) && (
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  <span>
-                    {task.start_time && formatTime(task.start_time)}
-                    {task.start_time && task.end_time && ' - '}
-                    {task.end_time && formatTime(task.end_time)}
-                  </span>
-                </div>
-              )}
-              {task.location && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  <span className="truncate">{task.location}</span>
-                </div>
-              )}
-            </div>
+            {task.location && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                <span className="truncate">{task.location}</span>
+              </div>
+            )}
           </div>
           
           <div
             {...listeners}
-            className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted/50"
+            className="cursor-grab active:cursor-grabbing p-2 rounded-md hover:bg-muted/50 transition-colors"
           >
             <div className="flex flex-col gap-1">
               <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
