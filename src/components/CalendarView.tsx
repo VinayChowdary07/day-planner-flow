@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
@@ -89,13 +88,20 @@ export const CalendarView = () => {
       if (!user) return;
 
       // Use raw query to bypass type checking issues
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_calendar_settings' as any)
         .select('outlook_access_token')
         .eq('user_id', user.id)
         .single();
 
-      setIsConnectedToOutlook(!!data?.outlook_access_token);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking Outlook connection:', error);
+        return;
+      }
+
+      if (data && typeof data === 'object' && !('error' in data)) {
+        setIsConnectedToOutlook(!!(data as any).outlook_access_token);
+      }
     } catch (error) {
       console.error('Error checking Outlook connection:', error);
     }

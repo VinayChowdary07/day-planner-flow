@@ -50,12 +50,13 @@ export const useCalendar = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        throw error;
+        console.error('Error fetching calendar settings:', error);
+        return;
       }
 
-      if (data) {
+      if (data && typeof data === 'object' && !('error' in data)) {
         setSettings(data as CalendarSettings);
-        setIsConnectedToOutlook(!!data.outlook_access_token);
+        setIsConnectedToOutlook(!!(data as any).outlook_access_token);
       }
     } catch (error) {
       console.error('Error fetching calendar settings:', error);
