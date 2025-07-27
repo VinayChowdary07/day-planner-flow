@@ -65,8 +65,8 @@ export const ProjectCard = ({ project, onEdit }: ProjectCardProps) => {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div 
-              className="w-6 h-6 rounded-full flex-shrink-0 ring-2 ring-offset-2 ring-offset-background"
-              style={{ backgroundColor: project.color, ringColor: project.color + '40' }}
+              className="w-6 h-6 rounded-full flex-shrink-0 ring-2 ring-offset-2 ring-offset-background ring-gray-200"
+              style={{ backgroundColor: project.color }}
             />
             <div className="flex-1 min-w-0">
               <CardTitle className="text-lg font-semibold truncate">{project.name}</CardTitle>
