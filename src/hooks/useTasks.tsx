@@ -17,6 +17,7 @@ export const useTasks = () => {
     }
 
     try {
+      console.log('Fetching tasks for user:', user.id);
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
@@ -24,7 +25,12 @@ export const useTasks = () => {
         .order('order_position', { ascending: true })
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching tasks:', error);
+        throw error;
+      }
+      
+      console.log('Fetched tasks:', data?.length || 0);
       setTasks((data || []) as Task[]);
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -46,6 +52,7 @@ export const useTasks = () => {
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up real-time subscription for tasks');
     const channel = supabase
       .channel('tasks-changes')
       .on(
@@ -64,14 +71,20 @@ export const useTasks = () => {
       .subscribe();
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user, fetchTasks]);
 
   const createTask = async (taskData: Partial<Task>) => {
-    if (!user || !taskData.title || !taskData.task_date) return;
+    if (!user || !taskData.title || !taskData.task_date) {
+      console.error('Missing required data for task creation');
+      return;
+    }
 
     try {
+      console.log('Creating task:', taskData);
+      
       // Handle empty time fields to prevent PostgreSQL errors
       const insertData: any = {
         title: taskData.title,
@@ -90,7 +103,6 @@ export const useTasks = () => {
         recurrence_end_date: taskData.recurrence_end_date || null,
         is_template: taskData.recurrence && taskData.recurrence !== 'none',
         project_id: taskData.project_id || null,
-        goal_id: taskData.goal_id || null,
       };
 
       // Set next_occurrence for recurring tasks
@@ -100,14 +112,20 @@ export const useTasks = () => {
         insertData.next_occurrence = nextDay.toISOString();
       }
 
+      console.log('Final insert data:', insertData);
+
       const { data, error } = await supabase
         .from('tasks')
         .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating task:', error);
+        throw error;
+      }
 
+      console.log('Task created successfully:', data);
       toast({
         title: 'Success',
         description: 'Task created successfully',
@@ -126,7 +144,14 @@ export const useTasks = () => {
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
+    if (!id) {
+      console.error('No task ID provided for update');
+      return;
+    }
+
     try {
+      console.log('Updating task:', id, updates);
+      
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
@@ -134,8 +159,12 @@ export const useTasks = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error updating task:', error);
+        throw error;
+      }
 
+      console.log('Task updated successfully:', data);
       toast({
         title: 'Success',
         description: 'Task updated successfully',
@@ -154,14 +183,25 @@ export const useTasks = () => {
   };
 
   const deleteTask = async (id: string) => {
+    if (!id) {
+      console.error('No task ID provided for deletion');
+      return;
+    }
+
     try {
+      console.log('Deleting task:', id);
+      
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error deleting task:', error);
+        throw error;
+      }
 
+      console.log('Task deleted successfully:', id);
       toast({
         title: 'Success',
         description: 'Task deleted successfully',
@@ -179,14 +219,21 @@ export const useTasks = () => {
 
   const toggleTaskComplete = async (id: string) => {
     const task = tasks.find(t => t.id === id);
-    if (!task) return;
+    if (!task) {
+      console.error('Task not found for completion toggle:', id);
+      return;
+    }
 
     const newStatus = task.status === 'complete' ? 'incomplete' : 'complete';
+    console.log('Toggling task status:', id, 'from', task.status, 'to', newStatus);
+    
     return updateTask(id, { status: newStatus });
   };
 
   const reorderTasks = async (reorderedTasks: Task[]) => {
     try {
+      console.log('Reordering tasks:', reorderedTasks.length);
+      
       const updates = reorderedTasks.map((task, index) => ({
         id: task.id,
         order_position: index,
@@ -200,6 +247,7 @@ export const useTasks = () => {
       }
 
       setTasks(reorderedTasks);
+      console.log('Tasks reordered successfully');
     } catch (error) {
       console.error('Error reordering tasks:', error);
       toast({

@@ -60,6 +60,16 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete }: TaskCardP
     setIsCompleting(false);
   };
 
+  const handleEdit = () => {
+    console.log('Edit task:', task.id);
+    onEdit(task);
+  };
+
+  const handleDelete = () => {
+    console.log('Delete task:', task.id);
+    onDelete(task.id);
+  };
+
   const formatTime = (time: string) => {
     return new Date(`1970-01-01T${time}`).toLocaleTimeString([], {
       hour: '2-digit',
@@ -80,7 +90,7 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete }: TaskCardP
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`transition-all duration-200 hover:shadow-lg border-l-4 ${
+      className={`group transition-all duration-200 hover:shadow-lg border-l-4 ${
         task.status === 'complete' 
           ? 'opacity-75 border-l-green-400 bg-green-50/30' 
           : 'border-l-primary hover:border-l-primary/80'
@@ -122,26 +132,24 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete }: TaskCardP
                 </div>
               </div>
               
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onEdit(task)}>
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Edit Task
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onDelete(task.id)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Task
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEdit}
+                  className="h-8 w-8 p-0 opacity-60 hover:opacity-100 transition-opacity"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="h-8 w-8 p-0 opacity-60 hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {task.description && (

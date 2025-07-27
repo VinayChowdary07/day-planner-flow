@@ -64,6 +64,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
 
   useEffect(() => {
     if (task) {
+      console.log('Editing task:', task);
       form.reset({
         title: task.title,
         description: task.description || '',
@@ -83,18 +84,23 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
   }, [task, form]);
 
   const handleSubmit = async (data: TaskFormData) => {
+    console.log('Submitting task form:', data);
     setLoading(true);
     try {
       const taskData = {
         ...data,
         tags: [],
-        project_id: data.project_id || null,
-        goal_id: data.goal_id || null,
+        project_id: data.project_id && data.project_id.trim() !== '' ? data.project_id : null,
+        goal_id: data.goal_id && data.goal_id.trim() !== '' ? data.goal_id : null,
       };
 
+      console.log('Processed task data:', taskData);
+
       if (task) {
+        console.log('Updating task:', task.id);
         await updateTask(task.id, taskData);
       } else {
+        console.log('Creating new task');
         await createTask(taskData);
       }
 
@@ -108,8 +114,15 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open && !task) {
+      form.reset();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -357,7 +370,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
             </div>
 
             <div className="flex gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="flex-1">
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} className="flex-1">
                 Cancel
               </Button>
               <Button type="submit" disabled={loading} className="flex-1">

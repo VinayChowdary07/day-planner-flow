@@ -39,18 +39,32 @@ export const TasksDashboard = () => {
   });
 
   const handleEdit = (task: Task) => {
+    console.log('Edit task triggered:', task.id);
     setEditingTask(task);
   };
 
   const handleDelete = async (id: string) => {
-    await deleteTask(id);
+    console.log('Delete task triggered:', id);
+    try {
+      await deleteTask(id);
+      console.log('Task deleted successfully:', id);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   const handleToggleComplete = async (id: string) => {
-    await toggleTaskComplete(id);
+    console.log('Toggle complete triggered:', id);
+    try {
+      await toggleTaskComplete(id);
+      console.log('Task status toggled successfully:', id);
+    } catch (error) {
+      console.error('Error toggling task status:', error);
+    }
   };
 
   const handleEditSuccess = () => {
+    console.log('Edit success, closing form');
     setEditingTask(null);
   };
 
