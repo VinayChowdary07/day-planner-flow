@@ -48,6 +48,10 @@ export const TasksDashboard = () => {
     await toggleTaskComplete(id);
   };
 
+  const handleEditSuccess = () => {
+    setEditingTask(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -117,7 +121,7 @@ export const TasksDashboard = () => {
       {editingTask && (
         <TaskForm 
           task={editingTask} 
-          onClose={() => setEditingTask(null)} 
+          onSuccess={handleEditSuccess}
         />
       )}
     </div>
