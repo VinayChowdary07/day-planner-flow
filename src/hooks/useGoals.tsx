@@ -251,17 +251,28 @@ export const useGoals = () => {
       // Combine both results
       const allTasks: Task[] = [];
       
-      // Add direct tasks
+      // Add direct tasks with proper type casting
       if (directTasks) {
-        allTasks.push(...directTasks);
+        allTasks.push(...directTasks.map(task => ({
+          ...task,
+          status: task.status as 'complete' | 'incomplete',
+          priority: task.priority as 'low' | 'medium' | 'high',
+          recurrence: task.recurrence as 'none' | 'daily' | 'weekly' | 'monthly'
+        })));
       }
 
-      // Add linked tasks (avoiding duplicates)
+      // Add linked tasks (avoiding duplicates) with proper type casting
       if (linkedTasks) {
         const linkedTasksData = linkedTasks
           .map(lt => lt.tasks)
           .filter(Boolean)
-          .filter(task => !allTasks.find(t => t.id === task.id)) as Task[];
+          .filter(task => !allTasks.find(t => t.id === task.id))
+          .map(task => ({
+            ...task,
+            status: task.status as 'complete' | 'incomplete',
+            priority: task.priority as 'low' | 'medium' | 'high',
+            recurrence: task.recurrence as 'none' | 'daily' | 'weekly' | 'monthly'
+          })) as Task[];
         
         allTasks.push(...linkedTasksData);
       }
