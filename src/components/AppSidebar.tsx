@@ -1,5 +1,5 @@
 
-import { Calendar, FolderOpen, Menu } from 'lucide-react';
+import { Calendar, FolderOpen, Target, Menu } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/sidebar';
 
 interface AppSidebarProps {
-  activeSection: 'tasks' | 'projects';
-  onSectionChange: (section: 'tasks' | 'projects') => void;
+  activeSection: 'tasks' | 'projects' | 'goals';
+  onSectionChange: (section: 'tasks' | 'projects' | 'goals') => void;
 }
 
 export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) {
@@ -28,6 +28,11 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
       title: 'Projects',
       icon: FolderOpen,
       key: 'projects' as const,
+    },
+    {
+      title: 'Goals',
+      icon: Target,
+      key: 'goals' as const,
     },
   ];
 

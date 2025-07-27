@@ -6,6 +6,7 @@ import * as z from 'zod';
 import { Task } from '@/types/task';
 import { useTasks } from '@/hooks/useTasks';
 import { useProjects } from '@/hooks/useProjects';
+import { useGoals } from '@/hooks/useGoals';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, X, Calendar, Clock, MapPin, Tag, FolderOpen, AlertCircle } from 'lucide-react';
+import { Plus, X, Calendar, Clock, MapPin, Tag, FolderOpen, Target, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 const taskSchema = z.object({
@@ -27,6 +28,7 @@ const taskSchema = z.object({
   category: z.string().optional(),
   location: z.string().optional(),
   project_id: z.string().optional(),
+  goal_id: z.string().optional(),
   tags: z.array(z.string()).optional(),
   recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']).optional(),
   recurrence_end_date: z.string().optional(),
@@ -45,6 +47,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
   const [newTag, setNewTag] = useState('');
   const { createTask, updateTask } = useTasks();
   const { projects } = useProjects();
+  const { goals } = useGoals();
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -58,6 +61,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       category: task?.category || 'general',
       location: task?.location || '',
       project_id: task?.project_id || 'none',
+      goal_id: task?.goal_id || 'none',
       tags: task?.tags || [],
       recurrence: task?.recurrence || 'none',
       recurrence_end_date: task?.recurrence_end_date || '',
@@ -66,7 +70,9 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
 
   const watchedTags = form.watch('tags') || [];
   const selectedProjectId = form.watch('project_id');
+  const selectedGoalId = form.watch('goal_id');
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedGoal = goals.find(g => g.id === selectedGoalId);
 
   const onSubmit = async (data: TaskFormData) => {
     setIsSubmitting(true);
@@ -74,6 +80,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       const taskData = {
         ...data,
         project_id: data.project_id === 'none' ? null : data.project_id,
+        goal_id: data.goal_id === 'none' ? null : data.goal_id,
         tags: data.tags || [],
         start_time: data.start_time || null,
         end_time: data.end_time || null,
@@ -150,74 +157,134 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
               )}
             />
 
-            {/* Project Selection - Prominently Featured */}
-            <Card className="border-primary/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4" />
-                  Project Assignment
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <FormField
-                  control={form.control}
-                  name="project_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Select a project (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-gray-300" />
-                                No project
-                              </div>
-                            </SelectItem>
-                            {projects.map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
+            {/* Project and Goal Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Project Assignment */}
+              <Card className="border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Project Assignment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <FormField
+                    control={form.control}
+                    name="project_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <SelectTrigger className="h-12">
+                              <SelectValue placeholder="Select a project (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">
                                 <div className="flex items-center gap-2">
-                                  <div 
-                                    className="w-3 h-3 rounded-full" 
-                                    style={{ backgroundColor: project.color }}
-                                  />
-                                  <span className="font-medium">{project.name}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {project.status}
-                                  </Badge>
+                                  <div className="w-3 h-3 rounded-full bg-gray-300" />
+                                  No project
                                 </div>
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      {selectedProject && (
-                        <div className="mt-2 p-3 bg-muted rounded-lg">
-                          <div className="flex items-center gap-2 text-sm">
-                            <div 
-                              className="w-4 h-4 rounded-full" 
-                              style={{ backgroundColor: selectedProject.color }}
-                            />
-                            <span className="font-medium">{selectedProject.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {selectedProject.status}
-                            </Badge>
+                              {projects.map((project) => (
+                                <SelectItem key={project.id} value={project.id}>
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: project.color }}
+                                    />
+                                    <span className="font-medium">{project.name}</span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {project.status}
+                                    </Badge>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        {selectedProject && (
+                          <div className="mt-2 p-3 bg-muted rounded-lg">
+                            <div className="flex items-center gap-2 text-sm">
+                              <div 
+                                className="w-4 h-4 rounded-full" 
+                                style={{ backgroundColor: selectedProject.color }}
+                              />
+                              <span className="font-medium">{selectedProject.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {selectedProject.status}
+                              </Badge>
+                            </div>
+                            {selectedProject.description && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {selectedProject.description}
+                              </p>
+                            )}
                           </div>
-                          {selectedProject.description && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {selectedProject.description}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Goal Assignment */}
+              <Card className="border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Goal Assignment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <FormField
+                    control={form.control}
+                    name="goal_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <SelectTrigger className="h-12">
+                              <SelectValue placeholder="Select a goal (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                <div className="flex items-center gap-2">
+                                  <Target className="w-3 h-3 text-gray-400" />
+                                  No goal
+                                </div>
+                              </SelectItem>
+                              {goals.map((goal) => (
+                                <SelectItem key={goal.id} value={goal.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Target className="w-3 h-3 text-primary" />
+                                    <span className="font-medium">{goal.title}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        {selectedGoal && (
+                          <div className="mt-2 p-3 bg-muted rounded-lg">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Target className="w-4 h-4 text-primary" />
+                              <span className="font-medium">{selectedGoal.title}</span>
+                            </div>
+                            {selectedGoal.description && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {selectedGoal.description}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Task Details */}
             <Card>

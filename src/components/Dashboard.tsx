@@ -4,9 +4,10 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { AppSidebar } from '@/components/AppSidebar';
 import { TasksDashboard } from '@/components/TasksDashboard';
 import { ProjectsDashboard } from '@/components/ProjectsDashboard';
+import { GoalsDashboard } from '@/components/GoalsDashboard';
 
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState<'tasks' | 'projects'>('tasks');
+  const [activeSection, setActiveSection] = useState<'tasks' | 'projects' | 'goals'>('tasks');
 
   const renderContent = () => {
     switch (activeSection) {
@@ -14,6 +15,8 @@ const Dashboard = () => {
         return <TasksDashboard />;
       case 'projects':
         return <ProjectsDashboard />;
+      case 'goals':
+        return <GoalsDashboard />;
       default:
         return <TasksDashboard />;
     }
