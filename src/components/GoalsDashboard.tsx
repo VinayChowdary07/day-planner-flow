@@ -1,12 +1,14 @@
+
 import { useState } from 'react';
 import { Goal } from '@/types/goal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Target, CheckCircle2, Clock, Archive, Filter } from 'lucide-react';
 import { useGoals } from '@/hooks/useGoals';
 import { GoalCard } from '@/components/GoalCard';
 import { GoalForm } from '@/components/GoalForm';
+import { Card, CardContent } from '@/components/ui/card';
 
 export const GoalsDashboard = () => {
   const { goals, loading, createGoal, updateGoal, deleteGoal } = useGoals();
@@ -19,12 +21,16 @@ export const GoalsDashboard = () => {
     const matchesSearch = goal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          goal.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // For now, return all goals for 'all' status
-    // TODO: Implement status filtering based on completion
     if (statusFilter === 'all') return matchesSearch;
     
     return matchesSearch;
   });
+
+  // Calculate statistics
+  const totalGoals = goals.length;
+  const activeGoals = goals.length; // For now, all goals are considered active
+  const completedGoals = 0; // TODO: Implement completion logic
+  const archivedGoals = 0; // TODO: Implement archive logic
 
   const handleCreateGoal = async (goalData: Partial<Goal>) => {
     await createGoal(goalData);
@@ -78,55 +84,131 @@ export const GoalsDashboard = () => {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search goals..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Goals</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-muted rounded-lg">
+                <Target className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Goals</p>
+                <p className="text-2xl font-bold">{totalGoals}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <Clock className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Active</p>
+                <p className="text-2xl font-bold text-green-600">{activeGoals}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Completed</p>
+                <p className="text-2xl font-bold text-blue-600">{completedGoals}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <Archive className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Archived</p>
+                <p className="text-2xl font-bold text-gray-600">{archivedGoals}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Goals Grid */}
-      {filteredGoals.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">🎯</div>
-          <h3 className="text-lg font-semibold mb-2">No goals yet</h3>
-          <p className="text-muted-foreground mb-4">
-            Create your first goal to start tracking your progress
-          </p>
-          <Button onClick={() => setIsGoalFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Goal
-          </Button>
+      {/* Filters Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-lg font-semibold">Filters</h3>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGoals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              onEdit={openEditForm}
-              onDelete={handleDeleteGoal}
+        
+        <div className="flex gap-4 items-center">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search goals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
             />
-          ))}
+          </div>
+          
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      )}
+      </div>
+
+      {/* Goals Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Your Goals</h3>
+          <p className="text-sm text-muted-foreground">
+            {filteredGoals.length} of {totalGoals} goals
+          </p>
+        </div>
+
+        {filteredGoals.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🎯</div>
+            <h3 className="text-lg font-semibold mb-2">No goals yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Create your first goal to start tracking your progress
+            </p>
+            <Button onClick={() => setIsGoalFormOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Goal
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredGoals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                onEdit={openEditForm}
+                onDelete={handleDeleteGoal}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Goal Form Modals */}
       <GoalForm
