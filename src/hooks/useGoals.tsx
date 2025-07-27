@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Goal, GoalTask, GoalProgress, GoalFilters } from '@/types/goal';
@@ -42,7 +41,6 @@ export const useGoals = () => {
     fetchGoals();
   }, [fetchGoals]);
 
-  // Set up real-time subscription for goals
   useEffect(() => {
     if (!user) return;
 
@@ -111,7 +109,6 @@ export const useGoals = () => {
     }
 
     try {
-      // Clean and validate the updates data
       const cleanUpdates: any = {};
       
       if (updates.title !== undefined) cleanUpdates.title = updates.title;
@@ -246,7 +243,6 @@ export const useGoals = () => {
     if (!user) return null;
 
     try {
-      // Get goal details
       const { data: goal, error: goalError } = await supabase
         .from('goals')
         .select('*')
@@ -255,7 +251,6 @@ export const useGoals = () => {
 
       if (goalError) throw goalError;
 
-      // Get all tasks linked to this goal
       const tasks = await getGoalTasks(goalId);
       
       let totalTasks = 0;
@@ -265,7 +260,6 @@ export const useGoals = () => {
 
       for (const task of tasks) {
         if (task.recurrence && task.recurrence !== 'none') {
-          // This is a recurring task
           hasInfiniteRecurring = true;
           totalRecurringCompletions++;
           
@@ -273,7 +267,6 @@ export const useGoals = () => {
             completedTasks++;
           }
         } else {
-          // Regular task
           totalTasks++;
           if (task.status === 'complete') {
             completedTasks++;
@@ -300,7 +293,6 @@ export const useGoals = () => {
 
   const filterGoals = (filters: GoalFilters): Goal[] => {
     return goals.filter(goal => {
-      // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchesSearch = 
@@ -310,7 +302,6 @@ export const useGoals = () => {
         if (!matchesSearch) return false;
       }
 
-      // Status filter - for now, just return all for 'all' status
       if (filters.status === 'all') {
         return true;
       }

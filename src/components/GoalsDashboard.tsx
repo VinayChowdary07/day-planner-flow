@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Goal } from '@/types/goal';
 import { Button } from '@/components/ui/button';
@@ -21,13 +20,13 @@ export const GoalsDashboard = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
 
-  // Listen for task changes to refresh goal progress
+  // Enhanced real-time subscription for task changes affecting goals
   useEffect(() => {
     if (!user) return;
 
-    console.log('Setting up real-time subscription for task changes affecting goals');
+    console.log('Setting up enhanced real-time subscription for goals dashboard');
     const channel = supabase
-      .channel('goals-dashboard-updates')
+      .channel('goals-dashboard-enhanced-updates')
       .on(
         'postgres_changes',
         {
@@ -37,8 +36,8 @@ export const GoalsDashboard = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Task change detected in goals dashboard:', payload);
-          // Trigger refresh of goal progress when tasks change
+          console.log('Task change detected in enhanced goals dashboard:', payload);
+          // Enhanced refresh trigger for immediate visual updates
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -50,15 +49,29 @@ export const GoalsDashboard = () => {
           table: 'goal_tasks',
         },
         (payload) => {
-          console.log('Goal-task link change detected in goals dashboard:', payload);
-          // Trigger refresh when goal-task associations change
+          console.log('Goal-task link change detected in enhanced goals dashboard:', payload);
+          // Enhanced refresh trigger for immediate visual updates
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'goals',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Goal change detected in enhanced goals dashboard:', payload);
+          // Enhanced refresh trigger for immediate visual updates
           setRefreshTrigger(prev => prev + 1);
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up goals dashboard real-time subscription');
+      console.log('Cleaning up enhanced goals dashboard real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -128,15 +141,20 @@ export const GoalsDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Enhanced Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Goals</h1>
-          <p className="text-muted-foreground">
-            Track your progress and achieve your objectives
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Goals Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track your progress and achieve your objectives with enhanced task integration
           </p>
         </div>
-        <Button onClick={() => setIsGoalFormOpen(true)}>
+        <Button 
+          onClick={() => setIsGoalFormOpen(true)}
+          className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Goal
         </Button>
@@ -144,11 +162,11 @@ export const GoalsDashboard = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-muted rounded-lg">
-                <Target className="h-5 w-5 text-muted-foreground" />
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Target className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Goals</p>
@@ -158,7 +176,7 @@ export const GoalsDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-50 rounded-lg">
@@ -172,7 +190,7 @@ export const GoalsDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-50 rounded-lg">
@@ -186,7 +204,7 @@ export const GoalsDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gray-50 rounded-lg">
@@ -247,9 +265,12 @@ export const GoalsDashboard = () => {
             <div className="text-6xl mb-4">🎯</div>
             <h3 className="text-lg font-semibold mb-2">No goals yet</h3>
             <p className="text-muted-foreground mb-4">
-              Create your first goal to start tracking your progress
+              Create your first goal to start tracking your progress with enhanced task integration
             </p>
-            <Button onClick={() => setIsGoalFormOpen(true)}>
+            <Button 
+              onClick={() => setIsGoalFormOpen(true)}
+              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Goal
             </Button>
@@ -257,12 +278,13 @@ export const GoalsDashboard = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredGoals.map((goal) => (
-              <GoalCard
-                key={`${goal.id}-${refreshTrigger}`}
-                goal={goal}
-                onEdit={openEditForm}
-                onDelete={handleDeleteGoal}
-              />
+              <div key={`${goal.id}-${refreshTrigger}`} className="animate-fade-in">
+                <GoalCard
+                  goal={goal}
+                  onEdit={openEditForm}
+                  onDelete={handleDeleteGoal}
+                />
+              </div>
             ))}
           </div>
         )}
