@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,8 +56,8 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       category: 'general',
       recurrence: 'none',
       recurrence_end_date: '',
-      project_id: '',
-      goal_id: '',
+      project_id: 'none',
+      goal_id: 'none',
     },
   });
 
@@ -76,8 +75,8 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
         category: task.category,
         recurrence: task.recurrence || 'none',
         recurrence_end_date: task.recurrence_end_date || '',
-        project_id: task.project_id || '',
-        goal_id: task.goal_id || '',
+        project_id: task.project_id || 'none',
+        goal_id: task.goal_id || 'none',
       });
       setIsOpen(true);
     }
@@ -90,8 +89,8 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       const taskData = {
         ...data,
         tags: [],
-        project_id: data.project_id && data.project_id.trim() !== '' ? data.project_id : null,
-        goal_id: data.goal_id && data.goal_id.trim() !== '' ? data.goal_id : null,
+        project_id: data.project_id === 'none' ? null : data.project_id,
+        goal_id: data.goal_id === 'none' ? null : data.goal_id,
       };
 
       console.log('Processed task data:', taskData);
@@ -139,6 +138,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
+              
               <FormField
                 control={form.control}
                 name="title"
@@ -289,7 +289,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No project</SelectItem>
+                        <SelectItem value="none">No project</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -315,7 +315,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No goal</SelectItem>
+                        <SelectItem value="none">No goal</SelectItem>
                         {goals.map((goal) => (
                           <SelectItem key={goal.id} value={goal.id}>
                             {goal.title}
