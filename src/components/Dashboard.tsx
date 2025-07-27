@@ -5,9 +5,10 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { TasksDashboard } from '@/components/TasksDashboard';
 import { ProjectsDashboard } from '@/components/ProjectsDashboard';
 import { GoalsDashboard } from '@/components/GoalsDashboard';
+import { CalendarView } from '@/components/CalendarView';
 
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState<'tasks' | 'projects' | 'goals'>('tasks');
+  const [activeSection, setActiveSection] = useState<'tasks' | 'projects' | 'goals' | 'calendar'>('tasks');
 
   const renderContent = () => {
     switch (activeSection) {
@@ -17,6 +18,8 @@ const Dashboard = () => {
         return <ProjectsDashboard />;
       case 'goals':
         return <GoalsDashboard />;
+      case 'calendar':
+        return <CalendarView />;
       default:
         return <TasksDashboard />;
     }
