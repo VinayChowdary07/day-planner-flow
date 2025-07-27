@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskFilters } from '@/types/task';
@@ -162,11 +160,46 @@ export const useTasks = () => {
     }
 
     try {
-      console.log('Updating task:', id, updates);
+      console.log('Updating task:', id, 'with updates:', updates);
       
+      // Clean and validate the updates data
+      const cleanUpdates: any = {};
+      
+      // Handle each field properly
+      if (updates.title !== undefined) cleanUpdates.title = updates.title;
+      if (updates.description !== undefined) cleanUpdates.description = updates.description || null;
+      if (updates.task_date !== undefined) cleanUpdates.task_date = updates.task_date;
+      if (updates.start_time !== undefined) cleanUpdates.start_time = updates.start_time?.trim() || null;
+      if (updates.end_time !== undefined) cleanUpdates.end_time = updates.end_time?.trim() || null;
+      if (updates.location !== undefined) cleanUpdates.location = updates.location || null;
+      if (updates.priority !== undefined) cleanUpdates.priority = updates.priority;
+      if (updates.category !== undefined) cleanUpdates.category = updates.category;
+      if (updates.status !== undefined) cleanUpdates.status = updates.status;
+      if (updates.tags !== undefined) cleanUpdates.tags = updates.tags || [];
+      if (updates.recurrence !== undefined) cleanUpdates.recurrence = updates.recurrence || 'none';
+      if (updates.recurrence_end_date !== undefined) cleanUpdates.recurrence_end_date = updates.recurrence_end_date || null;
+      if (updates.project_id !== undefined) cleanUpdates.project_id = updates.project_id || null;
+      if (updates.goal_id !== undefined) cleanUpdates.goal_id = updates.goal_id || null;
+      if (updates.order_position !== undefined) cleanUpdates.order_position = updates.order_position;
+
+      // Handle template and next_occurrence logic
+      if (updates.recurrence !== undefined) {
+        cleanUpdates.is_template = updates.recurrence && updates.recurrence !== 'none';
+        
+        if (updates.recurrence && updates.recurrence !== 'none' && updates.task_date) {
+          const nextDay = new Date(updates.task_date);
+          nextDay.setDate(nextDay.getDate() + 1);
+          cleanUpdates.next_occurrence = nextDay.toISOString();
+        } else {
+          cleanUpdates.next_occurrence = null;
+        }
+      }
+
+      console.log('Clean updates data:', cleanUpdates);
+
       const { data, error } = await supabase
         .from('tasks')
-        .update(updates)
+        .update(cleanUpdates)
         .eq('id', id)
         .select()
         .single();

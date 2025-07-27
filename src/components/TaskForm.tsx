@@ -88,11 +88,21 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
     console.log('Submitting task form:', data);
     setLoading(true);
     try {
-      const taskData = {
-        ...data,
+      // Clean the data before sending
+      const taskData: Partial<Task> = {
+        title: data.title,
+        description: data.description || undefined,
+        task_date: data.task_date,
+        start_time: data.start_time || undefined,
+        end_time: data.end_time || undefined,
+        location: data.location || undefined,
+        priority: data.priority,
+        category: data.category,
+        recurrence: data.recurrence === 'none' ? undefined : data.recurrence,
+        recurrence_end_date: data.recurrence_end_date || undefined,
+        project_id: data.project_id === 'none' ? undefined : data.project_id,
+        goal_id: data.goal_id === 'none' ? undefined : data.goal_id,
         tags: [],
-        project_id: data.project_id === 'none' ? null : data.project_id,
-        goal_id: data.goal_id === 'none' ? null : data.goal_id,
       };
 
       console.log('Processed task data:', taskData);
