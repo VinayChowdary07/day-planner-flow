@@ -21,7 +21,7 @@ export const useProjects = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProjects(data || []);
+      setProjects((data || []) as Project[]);
     } catch (error) {
       console.error('Error fetching projects:', error);
       toast({
@@ -86,7 +86,7 @@ export const useProjects = () => {
         description: 'Project created successfully',
       });
 
-      return data;
+      return data as Project;
     } catch (error) {
       console.error('Error creating project:', error);
       toast({
@@ -114,7 +114,7 @@ export const useProjects = () => {
         description: 'Project updated successfully',
       });
 
-      return data;
+      return data as Project;
     } catch (error) {
       console.error('Error updating project:', error);
       toast({

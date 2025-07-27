@@ -1,3 +1,4 @@
+
 export interface Task {
   id: string;
   user_id: string;
@@ -9,7 +10,7 @@ export interface Task {
   location?: string;
   tags: string[];
   status: 'complete' | 'incomplete';
-  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
+  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly';
   recurrence_end_date?: string;
   parent_task_id?: string;
   next_occurrence?: string;
@@ -17,6 +18,7 @@ export interface Task {
   priority: 'low' | 'medium' | 'high';
   category: string;
   order_position: number;
+  project_id?: string;
   created_at: string;
   updated_at: string;
 }

@@ -6,7 +6,7 @@ import { TasksDashboard } from '@/components/TasksDashboard';
 import { GoalsDashboard } from '@/components/GoalsDashboard';
 import { ProjectsDashboard } from '@/components/ProjectsDashboard';
 
-export const Dashboard = () => {
+const Dashboard = () => {
   const [activeSection, setActiveSection] = useState<'tasks' | 'goals' | 'projects'>('tasks');
 
   const renderContent = () => {
@@ -42,3 +42,5 @@ export const Dashboard = () => {
     </SidebarProvider>
   );
 };
+
+export default Dashboard;
