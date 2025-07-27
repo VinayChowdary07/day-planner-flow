@@ -1,4 +1,5 @@
 
+
 export interface Task {
   id: string;
   user_id: string;
@@ -19,6 +20,7 @@ export interface Task {
   category: string;
   order_position: number;
   project_id?: string;
+  goal_id?: string;
   created_at: string;
   updated_at: string;
 }
