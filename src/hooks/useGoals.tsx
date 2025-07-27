@@ -225,7 +225,18 @@ export const useGoals = () => {
     try {
       console.log('Fetching tasks for goal:', goalId);
       
-      const { data: goalTasks, error } = await supabase
+      // First, get all tasks that have the goal_id directly set
+      const { data: directTasks, error: directError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('goal_id', goalId);
+
+      if (directError) {
+        console.error('Error fetching direct tasks:', directError);
+      }
+
+      // Then, get tasks linked through goal_tasks junction table
+      const { data: linkedTasks, error: linkedError } = await supabase
         .from('goal_tasks')
         .select(`
           task_id,
@@ -233,15 +244,30 @@ export const useGoals = () => {
         `)
         .eq('goal_id', goalId);
 
-      if (error) {
-        console.error('Error fetching goal tasks:', error);
-        throw error;
+      if (linkedError) {
+        console.error('Error fetching linked tasks:', linkedError);
       }
 
-      const tasks = goalTasks?.map(gt => gt.tasks).filter(Boolean) as Task[] || [];
-      console.log(`Found ${tasks.length} tasks for goal ${goalId}`);
+      // Combine both results
+      const allTasks: Task[] = [];
       
-      return tasks;
+      // Add direct tasks
+      if (directTasks) {
+        allTasks.push(...directTasks);
+      }
+
+      // Add linked tasks (avoiding duplicates)
+      if (linkedTasks) {
+        const linkedTasksData = linkedTasks
+          .map(lt => lt.tasks)
+          .filter(Boolean)
+          .filter(task => !allTasks.find(t => t.id === task.id)) as Task[];
+        
+        allTasks.push(...linkedTasksData);
+      }
+
+      console.log(`Found ${allTasks.length} tasks for goal ${goalId}:`, allTasks);
+      return allTasks;
     } catch (error) {
       console.error('Error fetching goal tasks:', error);
       return [];
