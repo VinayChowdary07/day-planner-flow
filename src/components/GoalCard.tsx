@@ -5,7 +5,7 @@ import { Task } from '@/types/task';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Target, Calendar, Edit, Trash2, List, ChevronDown, ChevronUp } from 'lucide-react';
+import { Target, Calendar, Edit, Trash2, List, ChevronDown, ChevronUp, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import { useGoals } from '@/hooks/useGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -24,16 +24,27 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { getGoalProgress, getGoalTasks } = useGoals();
+
+  // Force refresh function
+  const forceRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   const fetchGoalData = async () => {
     setLoading(true);
     setError(null);
     try {
+      console.log(`Fetching data for goal: ${goal.id}`);
+      
       const [progressData, linkedTasks] = await Promise.all([
         getGoalProgress(goal.id),
         getGoalTasks(goal.id)
       ]);
+      
+      console.log(`Goal ${goal.id} - Progress:`, progressData);
+      console.log(`Goal ${goal.id} - Tasks:`, linkedTasks);
       
       setProgress(progressData);
       setTasks(linkedTasks);
@@ -47,12 +58,14 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
 
   useEffect(() => {
     fetchGoalData();
-  }, [goal.id]);
+  }, [goal.id, refreshKey]);
 
-  // Enhanced real-time subscription for immediate updates
+  // Enhanced real-time subscription with immediate updates
   useEffect(() => {
+    console.log(`Setting up real-time listeners for goal: ${goal.id}`);
+    
     const channel = supabase
-      .channel(`goal-${goal.id}-enhanced-updates`)
+      .channel(`goal-${goal.id}-realtime`)
       .on(
         'postgres_changes',
         {
@@ -61,8 +74,8 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           table: 'tasks',
         },
         (payload) => {
-          console.log('Task change detected for goal:', goal.id, payload);
-          // Immediate refresh for any task changes
+          console.log(`Task change detected for goal ${goal.id}:`, payload);
+          // Immediate refresh on any task change
           fetchGoalData();
         }
       )
@@ -74,14 +87,15 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           table: 'goal_tasks',
         },
         (payload) => {
-          console.log('Goal-task link change detected for goal:', goal.id, payload);
-          // Immediate refresh for goal-task associations
+          console.log(`Goal-task association change for goal ${goal.id}:`, payload);
+          // Immediate refresh on goal-task associations
           fetchGoalData();
         }
       )
       .subscribe();
 
     return () => {
+      console.log(`Cleaning up real-time listeners for goal: ${goal.id}`);
       supabase.removeChannel(channel);
     };
   }, [goal.id]);
@@ -184,6 +198,72 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Real-time Task Statistics */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-gray-700">Task Progress</h4>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={forceRefresh}
+              className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
+            >
+              <TrendingUp className="h-3 w-3" />
+            </Button>
+          </div>
+          
+          {loading ? (
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-2 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          ) : error ? (
+            <div className="text-red-600 text-sm">{error}</div>
+          ) : progress ? (
+            <div className="space-y-3">
+              {/* Task Count Display */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium">
+                    {progress.completedTasks} of {progress.totalTasks} tasks completed
+                  </span>
+                </div>
+                <Badge className="bg-blue-100 text-blue-800 text-xs">
+                  {tasks.length} total
+                </Badge>
+              </div>
+
+              {/* Progress Bar */}
+              {!progress.hasInfiniteRecurring && (
+                <div className="space-y-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${progress.percentage || 0}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>0%</span>
+                    <span className="font-medium">{progress.percentage || 0}%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Recurring Tasks Indicator */}
+              {progress.hasInfiniteRecurring && (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-sm">Ongoing goal with recurring tasks</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-500 text-sm">No task data available</div>
+          )}
+        </div>
+
         {/* Enhanced Progress Display */}
         <GoalProgressDisplay 
           progress={progress}

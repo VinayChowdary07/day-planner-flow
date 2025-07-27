@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { Goal } from '@/types/goal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Target, CheckCircle2, Clock, Archive, Filter } from 'lucide-react';
+import { Plus, Search, Target, CheckCircle2, Clock, Archive, Filter, RefreshCw } from 'lucide-react';
 import { useGoals } from '@/hooks/useGoals';
 import { GoalCard } from '@/components/GoalCard';
 import { GoalForm } from '@/components/GoalForm';
@@ -18,15 +19,27 @@ export const GoalsDashboard = () => {
   const [isGoalFormOpen, setIsGoalFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useAuth();
 
-  // Enhanced real-time subscription for task changes affecting goals
+  // Force refresh function for manual updates
+  const forceRefresh = async () => {
+    setIsRefreshing(true);
+    setRefreshTrigger(prev => prev + 1);
+    
+    // Add a small delay to show the refresh animation
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
+  };
+
+  // Enhanced real-time subscription for all relevant changes
   useEffect(() => {
     if (!user) return;
 
-    console.log('Setting up enhanced real-time subscription for goals dashboard');
+    console.log('Setting up comprehensive real-time subscription for goals dashboard');
     const channel = supabase
-      .channel('goals-dashboard-enhanced-updates')
+      .channel('goals-dashboard-comprehensive')
       .on(
         'postgres_changes',
         {
@@ -36,8 +49,7 @@ export const GoalsDashboard = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Task change detected in enhanced goals dashboard:', payload);
-          // Enhanced refresh trigger for immediate visual updates
+          console.log('Task change detected - forcing goals refresh:', payload);
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -49,8 +61,7 @@ export const GoalsDashboard = () => {
           table: 'goal_tasks',
         },
         (payload) => {
-          console.log('Goal-task link change detected in enhanced goals dashboard:', payload);
-          // Enhanced refresh trigger for immediate visual updates
+          console.log('Goal-task association change - forcing goals refresh:', payload);
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -63,15 +74,14 @@ export const GoalsDashboard = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Goal change detected in enhanced goals dashboard:', payload);
-          // Enhanced refresh trigger for immediate visual updates
+          console.log('Goal change detected - forcing goals refresh:', payload);
           setRefreshTrigger(prev => prev + 1);
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up enhanced goals dashboard real-time subscription');
+      console.log('Cleaning up comprehensive goals dashboard real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -95,6 +105,7 @@ export const GoalsDashboard = () => {
     try {
       await createGoal(goalData);
       setIsGoalFormOpen(false);
+      forceRefresh();
     } catch (error) {
       console.error('Error creating goal:', error);
     }
@@ -105,6 +116,7 @@ export const GoalsDashboard = () => {
     try {
       await updateGoal(editingGoal.id, goalData);
       setEditingGoal(null);
+      forceRefresh();
     } catch (error) {
       console.error('Error updating goal:', error);
     }
@@ -114,6 +126,7 @@ export const GoalsDashboard = () => {
     if (confirm('Are you sure you want to delete this goal? This action cannot be undone.')) {
       try {
         await deleteGoal(goalId);
+        forceRefresh();
       } catch (error) {
         console.error('Error deleting goal:', error);
       }
@@ -148,16 +161,28 @@ export const GoalsDashboard = () => {
             Goals Dashboard
           </h1>
           <p className="text-muted-foreground mt-1">
-            Track your progress and achieve your objectives with enhanced task integration
+            Track your progress and achieve your objectives with real-time task integration
           </p>
         </div>
-        <Button 
-          onClick={() => setIsGoalFormOpen(true)}
-          className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Goal
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={forceRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button 
+            onClick={() => setIsGoalFormOpen(true)}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Goal
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -265,7 +290,7 @@ export const GoalsDashboard = () => {
             <div className="text-6xl mb-4">🎯</div>
             <h3 className="text-lg font-semibold mb-2">No goals yet</h3>
             <p className="text-muted-foreground mb-4">
-              Create your first goal to start tracking your progress with enhanced task integration
+              Create your first goal to start tracking your progress with real-time task integration
             </p>
             <Button 
               onClick={() => setIsGoalFormOpen(true)}

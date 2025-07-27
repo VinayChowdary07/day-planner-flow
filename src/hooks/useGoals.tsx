@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Goal, GoalTask, GoalProgress, GoalFilters } from '@/types/goal';
@@ -222,6 +223,8 @@ export const useGoals = () => {
 
   const getGoalTasks = async (goalId: string): Promise<Task[]> => {
     try {
+      console.log('Fetching tasks for goal:', goalId);
+      
       const { data: goalTasks, error } = await supabase
         .from('goal_tasks')
         .select(`
@@ -230,9 +233,15 @@ export const useGoals = () => {
         `)
         .eq('goal_id', goalId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching goal tasks:', error);
+        throw error;
+      }
 
-      return goalTasks?.map(gt => gt.tasks).filter(Boolean) as Task[] || [];
+      const tasks = goalTasks?.map(gt => gt.tasks).filter(Boolean) as Task[] || [];
+      console.log(`Found ${tasks.length} tasks for goal ${goalId}`);
+      
+      return tasks;
     } catch (error) {
       console.error('Error fetching goal tasks:', error);
       return [];
@@ -243,13 +252,18 @@ export const useGoals = () => {
     if (!user) return null;
 
     try {
+      console.log('Calculating progress for goal:', goalId);
+      
       const { data: goal, error: goalError } = await supabase
         .from('goals')
         .select('*')
         .eq('id', goalId)
         .single();
 
-      if (goalError) throw goalError;
+      if (goalError) {
+        console.error('Error fetching goal:', goalError);
+        throw goalError;
+      }
 
       const tasks = await getGoalTasks(goalId);
       
@@ -277,7 +291,7 @@ export const useGoals = () => {
       const percentage = hasInfiniteRecurring ? null : 
         totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-      return {
+      const progress = {
         goal,
         totalTasks,
         completedTasks,
@@ -285,6 +299,9 @@ export const useGoals = () => {
         hasInfiniteRecurring,
         percentage,
       };
+
+      console.log(`Progress for goal ${goalId}:`, progress);
+      return progress;
     } catch (error) {
       console.error('Error calculating goal progress:', error);
       return null;
