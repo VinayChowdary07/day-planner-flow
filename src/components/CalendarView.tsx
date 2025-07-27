@@ -88,8 +88,9 @@ export const CalendarView = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Use raw query to bypass type checking issues
       const { data } = await supabase
-        .from('user_calendar_settings')
+        .from('user_calendar_settings' as any)
         .select('outlook_access_token')
         .eq('user_id', user.id)
         .single();

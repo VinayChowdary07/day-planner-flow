@@ -42,8 +42,9 @@ export const useCalendar = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Use raw query to bypass type checking issues
       const { data, error } = await supabase
-        .from('user_calendar_settings')
+        .from('user_calendar_settings' as any)
         .select('*')
         .eq('user_id', user.id)
         .single();
@@ -53,7 +54,7 @@ export const useCalendar = () => {
       }
 
       if (data) {
-        setSettings(data);
+        setSettings(data as CalendarSettings);
         setIsConnectedToOutlook(!!data.outlook_access_token);
       }
     } catch (error) {
@@ -159,7 +160,7 @@ export const useCalendar = () => {
       if (!user) return;
 
       const { error } = await supabase
-        .from('user_calendar_settings')
+        .from('user_calendar_settings' as any)
         .upsert({
           user_id: user.id,
           ...newSettings,
