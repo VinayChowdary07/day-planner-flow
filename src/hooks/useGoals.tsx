@@ -42,7 +42,7 @@ export const useGoals = () => {
     fetchGoals();
   }, [fetchGoals]);
 
-  // Set up real-time subscription
+  // Set up real-time subscription for goals
   useEffect(() => {
     if (!user) return;
 

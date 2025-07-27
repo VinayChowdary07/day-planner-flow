@@ -1,12 +1,15 @@
 
 import { useState, useEffect } from 'react';
 import { Goal, GoalProgress } from '@/types/goal';
+import { Task } from '@/types/task';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Infinity, Target, Calendar, CheckCircle2, Edit, Trash2, Clock } from 'lucide-react';
+import { Infinity, Target, Calendar, CheckCircle2, Edit, Trash2, Clock, ChevronDown, ChevronUp, List } from 'lucide-react';
 import { useGoals } from '@/hooks/useGoals';
+import { supabase } from '@/integrations/supabase/client';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface GoalCardProps {
   goal: Goal;
@@ -16,27 +19,83 @@ interface GoalCardProps {
 
 export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   const [progress, setProgress] = useState<GoalProgress | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { getGoalProgress } = useGoals();
 
-  useEffect(() => {
-    const fetchProgress = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const progressData = await getGoalProgress(goal.id);
-        setProgress(progressData);
-      } catch (err) {
-        console.error('Error fetching goal progress:', err);
-        setError('Failed to load progress');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchGoalData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch progress
+      const progressData = await getGoalProgress(goal.id);
+      setProgress(progressData);
 
-    fetchProgress();
+      // Fetch linked tasks
+      const { data: goalTasks, error: taskError } = await supabase
+        .from('goal_tasks')
+        .select(`
+          task_id,
+          tasks (*)
+        `)
+        .eq('goal_id', goal.id);
+
+      if (taskError) throw taskError;
+
+      const linkedTasks = goalTasks?.map(gt => gt.tasks).filter(Boolean) as Task[] || [];
+      setTasks(linkedTasks);
+    } catch (err) {
+      console.error('Error fetching goal data:', err);
+      setError('Failed to load goal data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGoalData();
   }, [goal.id, getGoalProgress]);
+
+  // Listen for task changes that might affect this goal
+  useEffect(() => {
+    console.log('Setting up real-time subscription for goal:', goal.id);
+    const channel = supabase
+      .channel(`goal-${goal.id}-updates`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+        },
+        (payload) => {
+          console.log('Task change detected for goal:', goal.id, payload);
+          // Refresh goal data when any task changes
+          fetchGoalData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'goal_tasks',
+        },
+        (payload) => {
+          console.log('Goal-task link change detected for goal:', goal.id, payload);
+          // Refresh when goal-task associations change
+          fetchGoalData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up goal card real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [goal.id]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
@@ -70,6 +129,17 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
     if (progress.percentage === 100) return 'bg-green-100 text-green-700';
     if (progress.percentage && progress.percentage > 50) return 'bg-blue-100 text-blue-700';
     return 'bg-yellow-100 text-yellow-700';
+  };
+
+  const getTaskStatusColor = (status: string) => {
+    return status === 'complete' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800';
+  };
+
+  const formatTaskDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   return (
@@ -151,6 +221,56 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           )}
         </div>
 
+        {/* Linked Tasks Section */}
+        {tasks.length > 0 && (
+          <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-between p-2 h-auto"
+                size="sm"
+              >
+                <div className="flex items-center gap-2">
+                  <List className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium">
+                    Linked Tasks ({tasks.length})
+                  </span>
+                </div>
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 mt-2">
+              {tasks.map((task) => (
+                <div 
+                  key={task.id} 
+                  className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${
+                      task.status === 'complete' ? 'line-through text-muted-foreground' : ''
+                    }`}>
+                      {task.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatTaskDate(task.task_date)}
+                    </p>
+                  </div>
+                  <Badge 
+                    variant="secondary" 
+                    className={`text-xs ${getTaskStatusColor(task.status)}`}
+                  >
+                    {task.status}
+                  </Badge>
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
         {/* Date Range */}
         {(goal.start_date || goal.end_date) && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -182,6 +302,13 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
               <Badge variant="outline" className="text-xs">
                 <Clock className="h-3 w-3 mr-1" />
                 {progress.totalRecurringCompletions} occurrences
+              </Badge>
+            )}
+
+            {tasks.length > 0 && (
+              <Badge variant="outline" className="text-xs">
+                <List className="h-3 w-3 mr-1" />
+                {tasks.length} linked
               </Badge>
             )}
           </div>

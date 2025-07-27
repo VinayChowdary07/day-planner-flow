@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Goal } from '@/types/goal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { useGoals } from '@/hooks/useGoals';
 import { GoalCard } from '@/components/GoalCard';
 import { GoalForm } from '@/components/GoalForm';
 import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export const GoalsDashboard = () => {
   const { goals, loading, createGoal, updateGoal, deleteGoal } = useGoals();
@@ -16,6 +18,50 @@ export const GoalsDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isGoalFormOpen, setIsGoalFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { user } = useAuth();
+
+  // Listen for task changes to refresh goal progress
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('Setting up real-time subscription for task changes affecting goals');
+    const channel = supabase
+      .channel('goals-task-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Task change detected, refreshing goals:', payload);
+          // Trigger refresh of goal progress when tasks change
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'goal_tasks',
+        },
+        (payload) => {
+          console.log('Goal-task link change detected, refreshing goals:', payload);
+          // Trigger refresh when goal-task associations change
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up goals real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const filteredGoals = goals.filter(goal => {
     const matchesSearch = goal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -200,7 +246,7 @@ export const GoalsDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredGoals.map((goal) => (
               <GoalCard
-                key={goal.id}
+                key={`${goal.id}-${refreshTrigger}`}
                 goal={goal}
                 onEdit={openEditForm}
                 onDelete={handleDeleteGoal}
