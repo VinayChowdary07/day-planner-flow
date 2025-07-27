@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Project, ProjectFilters } from '@/types/project';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,8 +10,11 @@ export const useProjects = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const fetchProjects = async () => {
-    if (!user) return;
+  const fetchProjects = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -32,11 +35,11 @@ export const useProjects = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchProjects();
-  }, [user]);
+  }, [fetchProjects]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -52,7 +55,8 @@ export const useProjects = () => {
           table: 'projects',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('Real-time project update:', payload);
           fetchProjects();
         }
       )
@@ -61,7 +65,7 @@ export const useProjects = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchProjects]);
 
   const createProject = async (projectData: Partial<Project>) => {
     if (!user || !projectData.name) return;

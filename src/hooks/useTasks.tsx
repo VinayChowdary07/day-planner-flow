@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskFilters } from '@/types/task';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,8 +10,11 @@ export const useTasks = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const fetchTasks = async () => {
-    if (!user) return;
+  const fetchTasks = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -32,11 +36,11 @@ export const useTasks = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchTasks();
-  }, [user]);
+  }, [fetchTasks]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -52,7 +56,8 @@ export const useTasks = () => {
           table: 'tasks',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('Real-time task update:', payload);
           fetchTasks();
         }
       )
@@ -61,7 +66,7 @@ export const useTasks = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchTasks]);
 
   const createTask = async (taskData: Partial<Task>) => {
     if (!user || !taskData.title || !taskData.task_date) return;

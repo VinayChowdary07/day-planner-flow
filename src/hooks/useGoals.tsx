@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Goal, GoalTask, GoalProgress, GoalFilters } from '@/types/goal';
 import { Task } from '@/types/task';
@@ -10,8 +11,11 @@ export const useGoals = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const fetchGoals = async () => {
-    if (!user) return;
+  const fetchGoals = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -32,11 +36,11 @@ export const useGoals = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchGoals();
-  }, [user]);
+  }, [fetchGoals]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -52,7 +56,8 @@ export const useGoals = () => {
           table: 'goals',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('Real-time goal update:', payload);
           fetchGoals();
         }
       )
@@ -61,7 +66,7 @@ export const useGoals = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchGoals]);
 
   const createGoal = async (goalData: Partial<Goal>) => {
     if (!user || !goalData.title) return;
