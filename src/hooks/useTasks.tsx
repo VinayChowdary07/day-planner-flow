@@ -65,7 +65,17 @@ export const useTasks = () => {
         },
         (payload) => {
           console.log('Real-time task update:', payload);
-          fetchTasks();
+          
+          // Handle different event types
+          if (payload.eventType === 'INSERT') {
+            setTasks(prev => [...prev, payload.new as Task]);
+          } else if (payload.eventType === 'UPDATE') {
+            setTasks(prev => prev.map(task => 
+              task.id === payload.new.id ? payload.new as Task : task
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setTasks(prev => prev.filter(task => task.id !== payload.old.id));
+          }
         }
       )
       .subscribe();
@@ -74,7 +84,7 @@ export const useTasks = () => {
       console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [user, fetchTasks]);
+  }, [user]);
 
   const createTask = async (taskData: Partial<Task>) => {
     if (!user || !taskData.title || !taskData.task_date) {
@@ -103,6 +113,7 @@ export const useTasks = () => {
         recurrence_end_date: taskData.recurrence_end_date || null,
         is_template: taskData.recurrence && taskData.recurrence !== 'none',
         project_id: taskData.project_id || null,
+        goal_id: taskData.goal_id || null,
       };
 
       // Set next_occurrence for recurring tasks
