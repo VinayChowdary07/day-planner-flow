@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Goal, GoalProgress } from '@/types/goal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,14 +17,22 @@ interface GoalCardProps {
 export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   const [progress, setProgress] = useState<GoalProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { getGoalProgress } = useGoals();
 
   useEffect(() => {
     const fetchProgress = async () => {
       setLoading(true);
-      const progressData = await getGoalProgress(goal.id);
-      setProgress(progressData);
-      setLoading(false);
+      setError(null);
+      try {
+        const progressData = await getGoalProgress(goal.id);
+        setProgress(progressData);
+      } catch (err) {
+        console.error('Error fetching goal progress:', err);
+        setError('Failed to load progress');
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchProgress();
@@ -35,7 +44,9 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   };
 
   const getProgressText = () => {
-    if (!progress) return 'Loading...';
+    if (loading) return 'Loading...';
+    if (error) return 'Error loading progress';
+    if (!progress) return 'No progress data';
     
     if (progress.hasInfiniteRecurring) {
       return `${progress.completedTasks} completed / ∞`;
@@ -47,6 +58,11 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   const getProgressValue = () => {
     if (!progress || progress.hasInfiniteRecurring) return 0;
     return progress.percentage || 0;
+  };
+
+  const getProgressPercentage = () => {
+    if (!progress || progress.hasInfiniteRecurring) return null;
+    return progress.percentage;
   };
 
   return (
@@ -99,7 +115,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
               Progress
             </span>
             <span className="font-medium">
-              {loading ? 'Loading...' : getProgressText()}
+              {getProgressText()}
             </span>
           </div>
           
@@ -117,9 +133,9 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
             />
           )}
           
-          {!progress?.hasInfiniteRecurring && progress?.percentage !== null && (
+          {!progress?.hasInfiniteRecurring && getProgressPercentage() !== null && (
             <p className="text-xs text-muted-foreground text-right">
-              {progress.percentage}% complete
+              {getProgressPercentage()}% complete
             </p>
           )}
         </div>
@@ -137,7 +153,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
         )}
 
         {/* Task Metrics */}
-        {progress && (
+        {progress && !error && (
           <div className="flex gap-2 flex-wrap">
             <Badge variant="secondary" className="text-xs">
               <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -157,6 +173,13 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
                 {progress.totalRecurringCompletions} occurrences
               </Badge>
             )}
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="text-sm text-destructive">
+            {error}
           </div>
         )}
       </CardContent>
