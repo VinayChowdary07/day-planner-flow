@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,9 +35,10 @@ type TaskFormData = z.infer<typeof taskSchema>;
 interface TaskFormProps {
   task?: Task;
   onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
+export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { createTask, updateTask } = useTasks();
@@ -117,8 +117,12 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (!open && !task) {
-      form.reset();
+    if (!open) {
+      if (task) {
+        onCancel?.();
+      } else {
+        form.reset();
+      }
     }
   };
 

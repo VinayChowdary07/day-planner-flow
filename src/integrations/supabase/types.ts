@@ -190,6 +190,7 @@ export type Database = {
           created_at: string
           description: string | null
           end_time: string | null
+          goal_id: string | null
           id: string
           is_template: boolean | null
           location: string | null
@@ -213,6 +214,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
+          goal_id?: string | null
           id?: string
           is_template?: boolean | null
           location?: string | null
@@ -236,6 +238,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
+          goal_id?: string | null
           id?: string
           is_template?: boolean | null
           location?: string | null
@@ -255,6 +258,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_parent_task_id_fkey"
             columns: ["parent_task_id"]

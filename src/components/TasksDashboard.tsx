@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { TaskCard } from '@/components/TaskCard';
 import { TaskForm } from '@/components/TaskForm';
@@ -64,6 +65,11 @@ export const TasksDashboard = () => {
 
   const handleEditSuccess = () => {
     console.log('Edit success, closing form');
+    setEditingTask(null);
+  };
+
+  const handleEditCancel = () => {
+    console.log('Edit cancelled, closing form');
     setEditingTask(null);
   };
 
@@ -249,6 +255,7 @@ export const TasksDashboard = () => {
         <TaskForm 
           task={editingTask} 
           onSuccess={handleEditSuccess}
+          onCancel={handleEditCancel}
         />
       )}
     </div>
