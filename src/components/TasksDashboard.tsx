@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Filter } from 'lucide-react';
 
 export const TasksDashboard = () => {
-  const { tasks, loading } = useTasks();
+  const { tasks, loading, deleteTask, toggleTaskComplete, updateTask } = useTasks();
   const [filters, setFilters] = useState<TaskFilters>({
     search: '',
     status: 'all',
@@ -18,6 +18,7 @@ export const TasksDashboard = () => {
     category: '',
     dateRange: 'all',
   });
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const filteredTasks = tasks.filter((task: Task) => {
     if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase())) {
@@ -34,6 +35,18 @@ export const TasksDashboard = () => {
     }
     return true;
   });
+
+  const handleEdit = (task: Task) => {
+    setEditingTask(task);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteTask(id);
+  };
+
+  const handleToggleComplete = async (id: string) => {
+    await toggleTaskComplete(id);
+  };
 
   if (loading) {
     return (
@@ -90,10 +103,23 @@ export const TasksDashboard = () => {
           </div>
         ) : (
           filteredTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard 
+              key={task.id} 
+              task={task} 
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onToggleComplete={handleToggleComplete}
+            />
           ))
         )}
       </div>
+
+      {editingTask && (
+        <TaskForm 
+          task={editingTask} 
+          onClose={() => setEditingTask(null)} 
+        />
+      )}
     </div>
   );
 };
