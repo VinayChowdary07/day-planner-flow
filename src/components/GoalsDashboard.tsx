@@ -27,7 +27,7 @@ export const GoalsDashboard = () => {
 
     console.log('Setting up real-time subscription for task changes affecting goals');
     const channel = supabase
-      .channel('goals-task-changes')
+      .channel('goals-dashboard-updates')
       .on(
         'postgres_changes',
         {
@@ -37,7 +37,7 @@ export const GoalsDashboard = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Task change detected, refreshing goals:', payload);
+          console.log('Task change detected in goals dashboard:', payload);
           // Trigger refresh of goal progress when tasks change
           setRefreshTrigger(prev => prev + 1);
         }
@@ -50,7 +50,7 @@ export const GoalsDashboard = () => {
           table: 'goal_tasks',
         },
         (payload) => {
-          console.log('Goal-task link change detected, refreshing goals:', payload);
+          console.log('Goal-task link change detected in goals dashboard:', payload);
           // Trigger refresh when goal-task associations change
           setRefreshTrigger(prev => prev + 1);
         }
@@ -58,7 +58,7 @@ export const GoalsDashboard = () => {
       .subscribe();
 
     return () => {
-      console.log('Cleaning up goals real-time subscription');
+      console.log('Cleaning up goals dashboard real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -79,19 +79,31 @@ export const GoalsDashboard = () => {
   const archivedGoals = 0; // TODO: Implement archive logic
 
   const handleCreateGoal = async (goalData: Partial<Goal>) => {
-    await createGoal(goalData);
-    setIsGoalFormOpen(false);
+    try {
+      await createGoal(goalData);
+      setIsGoalFormOpen(false);
+    } catch (error) {
+      console.error('Error creating goal:', error);
+    }
   };
 
   const handleUpdateGoal = async (goalData: Partial<Goal>) => {
     if (!editingGoal?.id) return;
-    await updateGoal(editingGoal.id, goalData);
-    setEditingGoal(null);
+    try {
+      await updateGoal(editingGoal.id, goalData);
+      setEditingGoal(null);
+    } catch (error) {
+      console.error('Error updating goal:', error);
+    }
   };
 
   const handleDeleteGoal = async (goalId: string) => {
     if (confirm('Are you sure you want to delete this goal? This action cannot be undone.')) {
-      await deleteGoal(goalId);
+      try {
+        await deleteGoal(goalId);
+      } catch (error) {
+        console.error('Error deleting goal:', error);
+      }
     }
   };
 

@@ -23,28 +23,19 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const { getGoalProgress } = useGoals();
+  const { getGoalProgress, getGoalTasks } = useGoals();
 
   const fetchGoalData = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch progress
-      const progressData = await getGoalProgress(goal.id);
+      // Fetch progress and tasks
+      const [progressData, linkedTasks] = await Promise.all([
+        getGoalProgress(goal.id),
+        getGoalTasks(goal.id)
+      ]);
+      
       setProgress(progressData);
-
-      // Fetch linked tasks
-      const { data: goalTasks, error: taskError } = await supabase
-        .from('goal_tasks')
-        .select(`
-          task_id,
-          tasks (*)
-        `)
-        .eq('goal_id', goal.id);
-
-      if (taskError) throw taskError;
-
-      const linkedTasks = goalTasks?.map(gt => gt.tasks).filter(Boolean) as Task[] || [];
       setTasks(linkedTasks);
     } catch (err) {
       console.error('Error fetching goal data:', err);
@@ -56,11 +47,10 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
 
   useEffect(() => {
     fetchGoalData();
-  }, [goal.id, getGoalProgress]);
+  }, [goal.id]);
 
   // Listen for task changes that might affect this goal
   useEffect(() => {
-    console.log('Setting up real-time subscription for goal:', goal.id);
     const channel = supabase
       .channel(`goal-${goal.id}-updates`)
       .on(
@@ -70,9 +60,8 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           schema: 'public',
           table: 'tasks',
         },
-        (payload) => {
-          console.log('Task change detected for goal:', goal.id, payload);
-          // Refresh goal data when any task changes
+        () => {
+          console.log('Task change detected for goal:', goal.id);
           fetchGoalData();
         }
       )
@@ -83,16 +72,14 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           schema: 'public',
           table: 'goal_tasks',
         },
-        (payload) => {
-          console.log('Goal-task link change detected for goal:', goal.id, payload);
-          // Refresh when goal-task associations change
+        () => {
+          console.log('Goal-task link change detected for goal:', goal.id);
           fetchGoalData();
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up goal card real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [goal.id]);
@@ -108,7 +95,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
     if (!progress) return 'No progress data';
     
     if (progress.hasInfiniteRecurring) {
-      return `${progress.completedTasks} completed / ∞`;
+      return `${progress.completedTasks} completed`;
     }
     
     return `${progress.completedTasks} / ${progress.totalTasks} completed`;
@@ -117,18 +104,6 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   const getProgressValue = () => {
     if (!progress || progress.hasInfiniteRecurring) return 0;
     return progress.percentage || 0;
-  };
-
-  const getProgressPercentage = () => {
-    if (!progress || progress.hasInfiniteRecurring) return null;
-    return progress.percentage;
-  };
-
-  const getPriorityColor = () => {
-    if (!progress) return 'bg-gray-100 text-gray-700';
-    if (progress.percentage === 100) return 'bg-green-100 text-green-700';
-    if (progress.percentage && progress.percentage > 50) return 'bg-blue-100 text-blue-700';
-    return 'bg-yellow-100 text-yellow-700';
   };
 
   const getTaskStatusColor = (status: string) => {
@@ -140,6 +115,15 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-700';
+      case 'medium': return 'bg-yellow-100 text-yellow-700';
+      case 'low': return 'bg-green-100 text-green-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
   };
 
   return (
@@ -210,10 +194,10 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
                 value={getProgressValue()} 
                 className="h-2"
               />
-              {getProgressPercentage() !== null && (
+              {progress?.percentage !== null && (
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>0%</span>
-                  <span className="font-medium">{getProgressPercentage()}%</span>
+                  <span className="font-medium">{progress?.percentage}%</span>
                   <span>100%</span>
                 </div>
               )}
@@ -247,17 +231,31 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
               {tasks.map((task) => (
                 <div 
                   key={task.id} 
-                  className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-md border"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${
-                      task.status === 'complete' ? 'line-through text-muted-foreground' : ''
-                    }`}>
-                      {task.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatTaskDate(task.task_date)}
-                    </p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className={`text-sm font-medium truncate ${
+                        task.status === 'complete' ? 'line-through text-muted-foreground' : ''
+                      }`}>
+                        {task.title}
+                      </p>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${getPriorityColor(task.priority)}`}
+                      >
+                        {task.priority}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span>{formatTaskDate(task.task_date)}</span>
+                      {task.recurrence && task.recurrence !== 'none' && (
+                        <Badge variant="outline" className="text-xs">
+                          {task.recurrence}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <Badge 
                     variant="secondary" 
@@ -286,7 +284,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
         {/* Task Metrics */}
         {progress && !error && (
           <div className="flex gap-2 flex-wrap">
-            <Badge variant="secondary" className={`text-xs ${getPriorityColor()}`}>
+            <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               {progress.completedTasks} completed
             </Badge>
@@ -301,7 +299,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
             {progress.hasInfiniteRecurring && progress.totalRecurringCompletions > 0 && (
               <Badge variant="outline" className="text-xs">
                 <Clock className="h-3 w-3 mr-1" />
-                {progress.totalRecurringCompletions} occurrences
+                {progress.totalRecurringCompletions} recurring
               </Badge>
             )}
 

@@ -105,10 +105,26 @@ export const useGoals = () => {
   };
 
   const updateGoal = async (id: string, updates: Partial<Goal>) => {
+    if (!id) {
+      console.error('No goal ID provided for update');
+      return;
+    }
+
     try {
+      // Clean and validate the updates data
+      const cleanUpdates: any = {};
+      
+      if (updates.title !== undefined) cleanUpdates.title = updates.title;
+      if (updates.description !== undefined) cleanUpdates.description = updates.description || null;
+      if (updates.start_date !== undefined) cleanUpdates.start_date = updates.start_date || null;
+      if (updates.end_date !== undefined) cleanUpdates.end_date = updates.end_date || null;
+      if (updates.target_count !== undefined) cleanUpdates.target_count = updates.target_count || null;
+
+      console.log('Updating goal:', id, 'with clean updates:', cleanUpdates);
+
       const { data, error } = await supabase
         .from('goals')
-        .update(updates)
+        .update(cleanUpdates)
         .eq('id', id)
         .select()
         .single();
@@ -207,6 +223,25 @@ export const useGoals = () => {
     }
   };
 
+  const getGoalTasks = async (goalId: string): Promise<Task[]> => {
+    try {
+      const { data: goalTasks, error } = await supabase
+        .from('goal_tasks')
+        .select(`
+          task_id,
+          tasks (*)
+        `)
+        .eq('goal_id', goalId);
+
+      if (error) throw error;
+
+      return goalTasks?.map(gt => gt.tasks).filter(Boolean) as Task[] || [];
+    } catch (error) {
+      console.error('Error fetching goal tasks:', error);
+      return [];
+    }
+  };
+
   const getGoalProgress = async (goalId: string): Promise<GoalProgress | null> => {
     if (!user) return null;
 
@@ -221,17 +256,7 @@ export const useGoals = () => {
       if (goalError) throw goalError;
 
       // Get all tasks linked to this goal
-      const { data: goalTasks, error: taskError } = await supabase
-        .from('goal_tasks')
-        .select(`
-          task_id,
-          tasks (*)
-        `)
-        .eq('goal_id', goalId);
-
-      if (taskError) throw taskError;
-
-      const tasks = goalTasks?.map(gt => gt.tasks).filter(Boolean) as Task[] || [];
+      const tasks = await getGoalTasks(goalId);
       
       let totalTasks = 0;
       let completedTasks = 0;
@@ -239,37 +264,14 @@ export const useGoals = () => {
       let hasInfiniteRecurring = false;
 
       for (const task of tasks) {
-        if (task.parent_task_id) {
-          // This is a recurring task instance
+        if (task.recurrence && task.recurrence !== 'none') {
+          // This is a recurring task
+          hasInfiniteRecurring = true;
           totalRecurringCompletions++;
+          
           if (task.status === 'complete') {
             completedTasks++;
           }
-        } else if (task.recurrence && task.recurrence !== 'none') {
-          // This is a recurring task template
-          hasInfiniteRecurring = true;
-          if (!task.recurrence_end_date) {
-            hasInfiniteRecurring = true;
-          } else {
-            // Count expected instances within date range
-            const startDate = new Date(task.task_date);
-            const endDate = new Date(task.recurrence_end_date);
-            const expectedInstances = calculateExpectedInstances(
-              startDate,
-              endDate,
-              task.recurrence
-            );
-            totalTasks += expectedInstances;
-          }
-          
-          // Count completed instances
-          const { data: instances } = await supabase
-            .from('tasks')
-            .select('status')
-            .eq('parent_task_id', task.id)
-            .eq('status', 'complete');
-          
-          completedTasks += instances?.length || 0;
         } else {
           // Regular task
           totalTasks++;
@@ -308,8 +310,7 @@ export const useGoals = () => {
         if (!matchesSearch) return false;
       }
 
-      // Status filter - would need progress calculation for each goal
-      // For now, just return all for 'all' status
+      // Status filter - for now, just return all for 'all' status
       if (filters.status === 'all') {
         return true;
       }
@@ -327,40 +328,7 @@ export const useGoals = () => {
     linkTaskToGoal,
     unlinkTaskFromGoal,
     getGoalProgress,
+    getGoalTasks,
     filterGoals,
   };
 };
-
-/**
- * Calculate expected instances for a recurring task within a date range
- */
-function calculateExpectedInstances(
-  startDate: Date,
-  endDate: Date,
-  recurrence: string
-): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  let count = 0;
-  let current = new Date(start);
-
-  while (current <= end) {
-    count++;
-    
-    switch (recurrence) {
-      case 'daily':
-        current.setDate(current.getDate() + 1);
-        break;
-      case 'weekly':
-        current.setDate(current.getDate() + 7);
-        break;
-      case 'monthly':
-        current.setMonth(current.getMonth() + 1);
-        break;
-      default:
-        current.setDate(current.getDate() + 1);
-    }
-  }
-
-  return count;
-}
