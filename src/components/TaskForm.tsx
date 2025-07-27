@@ -57,8 +57,8 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       category: 'general',
       recurrence: 'none',
       recurrence_end_date: '',
-      project_id: 'none',
-      goal_id: 'none',
+      project_id: '',
+      goal_id: '',
     },
   });
 
@@ -75,8 +75,8 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
         category: task.category,
         recurrence: task.recurrence || 'none',
         recurrence_end_date: task.recurrence_end_date || '',
-        project_id: task.project_id || 'none',
-        goal_id: task.goal_id || 'none',
+        project_id: task.project_id || '',
+        goal_id: task.goal_id || '',
       });
       setIsOpen(true);
     }
@@ -88,8 +88,8 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       const taskData = {
         ...data,
         tags: [],
-        project_id: data.project_id === 'none' ? undefined : data.project_id,
-        goal_id: data.goal_id === 'none' ? undefined : data.goal_id,
+        project_id: data.project_id || null,
+        goal_id: data.goal_id || null,
       };
 
       if (task) {
@@ -276,7 +276,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">No project</SelectItem>
+                        <SelectItem value="">No project</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -302,7 +302,7 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">No goal</SelectItem>
+                        <SelectItem value="">No goal</SelectItem>
                         {goals.map((goal) => (
                           <SelectItem key={goal.id} value={goal.id}>
                             {goal.title}

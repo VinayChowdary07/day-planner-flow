@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Infinity, Target, Calendar, CheckCircle2, Edit, Trash2 } from 'lucide-react';
+import { Infinity, Target, Calendar, CheckCircle2, Edit, Trash2, Clock } from 'lucide-react';
 import { useGoals } from '@/hooks/useGoals';
 
 interface GoalCardProps {
@@ -65,19 +65,29 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
     return progress.percentage;
   };
 
+  const getPriorityColor = () => {
+    if (!progress) return 'bg-gray-100 text-gray-700';
+    if (progress.percentage === 100) return 'bg-green-100 text-green-700';
+    if (progress.percentage && progress.percentage > 50) return 'bg-blue-100 text-blue-700';
+    return 'bg-yellow-100 text-yellow-700';
+  };
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="group hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg">{goal.title}</CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-base font-medium">{goal.title}</CardTitle>
+            </div>
             {goal.description && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground line-clamp-2">
                 {goal.description}
               </p>
             )}
           </div>
-          <div className="flex gap-1 ml-2">
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {onEdit && (
               <Button
                 variant="ghost"
@@ -104,39 +114,40 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
 
       <CardContent className="space-y-4">
         {/* Progress Section */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-1">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               {progress?.hasInfiniteRecurring ? (
-                <Infinity className="h-4 w-4" />
+                <Infinity className="h-4 w-4 text-blue-500" />
               ) : (
-                <Target className="h-4 w-4" />
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
               )}
-              Progress
-            </span>
-            <span className="font-medium">
+              <span className="text-sm font-medium">Progress</span>
+            </div>
+            <span className="text-sm text-muted-foreground">
               {getProgressText()}
             </span>
           </div>
           
           {progress?.hasInfiniteRecurring ? (
-            <div className="bg-secondary rounded-full h-4 flex items-center px-3">
-              <div className="flex items-center gap-2 text-xs font-medium">
-                <Infinity className="h-3 w-3" />
-                <span>Ongoing Goal</span>
-              </div>
+            <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md">
+              <Infinity className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-800">Ongoing Goal</span>
             </div>
           ) : (
-            <Progress 
-              value={getProgressValue()} 
-              className="h-3"
-            />
-          )}
-          
-          {!progress?.hasInfiniteRecurring && getProgressPercentage() !== null && (
-            <p className="text-xs text-muted-foreground text-right">
-              {getProgressPercentage()}% complete
-            </p>
+            <>
+              <Progress 
+                value={getProgressValue()} 
+                className="h-2"
+              />
+              {getProgressPercentage() !== null && (
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0%</span>
+                  <span className="font-medium">{getProgressPercentage()}%</span>
+                  <span>100%</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -155,7 +166,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
         {/* Task Metrics */}
         {progress && !error && (
           <div className="flex gap-2 flex-wrap">
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className={`text-xs ${getPriorityColor()}`}>
               <CheckCircle2 className="h-3 w-3 mr-1" />
               {progress.completedTasks} completed
             </Badge>
@@ -169,16 +180,27 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
             
             {progress.hasInfiniteRecurring && progress.totalRecurringCompletions > 0 && (
               <Badge variant="outline" className="text-xs">
-                <Infinity className="h-3 w-3 mr-1" />
+                <Clock className="h-3 w-3 mr-1" />
                 {progress.totalRecurringCompletions} occurrences
               </Badge>
             )}
           </div>
         )}
 
+        {/* Status indicator */}
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-xs font-medium text-muted-foreground">Active</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Created {formatDate(goal.created_at)}
+          </span>
+        </div>
+
         {/* Error State */}
         {error && (
-          <div className="text-sm text-destructive">
+          <div className="text-sm text-destructive bg-destructive/10 p-2 rounded-md">
             {error}
           </div>
         )}
