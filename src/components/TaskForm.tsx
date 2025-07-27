@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +13,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Plus } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
 import { useProjects } from '@/hooks/useProjects';
-import { useGoals } from '@/hooks/useGoals';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -26,7 +26,6 @@ const taskSchema = z.object({
   recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']),
   recurrence_end_date: z.string().optional(),
   project_id: z.string().optional(),
-  goal_id: z.string().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -41,7 +40,6 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
   const [loading, setLoading] = useState(false);
   const { createTask, updateTask } = useTasks();
   const { projects } = useProjects();
-  const { goals } = useGoals();
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -57,7 +55,6 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
       recurrence: 'none',
       recurrence_end_date: '',
       project_id: 'none',
-      goal_id: 'none',
     },
   });
 
@@ -76,7 +73,6 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
         recurrence: task.recurrence || 'none',
         recurrence_end_date: task.recurrence_end_date || '',
         project_id: task.project_id || 'none',
-        goal_id: task.goal_id || 'none',
       });
       setIsOpen(true);
     }
@@ -90,7 +86,6 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
         ...data,
         tags: [],
         project_id: data.project_id === 'none' ? null : data.project_id,
-        goal_id: data.goal_id === 'none' ? null : data.goal_id,
       };
 
       console.log('Processed task data:', taskData);
@@ -293,32 +288,6 @@ export const TaskForm = ({ task, onSuccess }: TaskFormProps) => {
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="goal_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Goal</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select goal (optional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No goal</SelectItem>
-                        {goals.map((goal) => (
-                          <SelectItem key={goal.id} value={goal.id}>
-                            {goal.title}
                           </SelectItem>
                         ))}
                       </SelectContent>

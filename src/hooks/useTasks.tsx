@@ -113,7 +113,6 @@ export const useTasks = () => {
         recurrence_end_date: taskData.recurrence_end_date || null,
         is_template: taskData.recurrence && taskData.recurrence !== 'none',
         project_id: taskData.project_id || null,
-        goal_id: taskData.goal_id || null,
       };
 
       // Set next_occurrence for recurring tasks
