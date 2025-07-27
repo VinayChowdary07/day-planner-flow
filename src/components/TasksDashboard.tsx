@@ -15,7 +15,7 @@ export const TasksDashboard = () => {
     search: '',
     status: 'all',
     priority: 'all',
-    category: '',
+    category: 'all',
     dateRange: 'all',
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -30,7 +30,7 @@ export const TasksDashboard = () => {
     if (filters.priority !== 'all' && task.priority !== filters.priority) {
       return false;
     }
-    if (filters.category && task.category !== filters.category) {
+    if (filters.category !== 'all' && task.category !== filters.category) {
       return false;
     }
     return true;
@@ -96,6 +96,19 @@ export const TasksDashboard = () => {
             <SelectItem value="high">High</SelectItem>
             <SelectItem value="medium">Medium</SelectItem>
             <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filters.category} onValueChange={(value) => setFilters({ ...filters, category: value as any })}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="general">General</SelectItem>
+            <SelectItem value="work">Work</SelectItem>
+            <SelectItem value="personal">Personal</SelectItem>
+            <SelectItem value="health">Health</SelectItem>
+            <SelectItem value="finance">Finance</SelectItem>
           </SelectContent>
         </Select>
       </div>
