@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
@@ -100,7 +99,7 @@ export const CalendarView = () => {
         return;
       }
 
-      if (data !== null && typeof data === 'object' && !('error' in data)) {
+      if (data && typeof data === 'object' && !('error' in data)) {
         const settingsData = data as Record<string, any>;
         const accessToken = settingsData['outlook_access_token'];
         setIsConnectedToOutlook(!!accessToken);
