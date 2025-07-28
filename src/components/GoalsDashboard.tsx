@@ -4,7 +4,7 @@ import { Goal } from '@/types/goal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Target, CheckCircle2, Clock, Archive, Filter, RefreshCw } from 'lucide-react';
+import { Plus, Search, Target, Trophy, Clock, TrendingUp, RefreshCw } from 'lucide-react';
 import { useGoals } from '@/hooks/useGoals';
 import { GoalCard } from '@/components/GoalCard';
 import { GoalForm } from '@/components/GoalForm';
@@ -20,26 +20,69 @@ export const GoalsDashboard = () => {
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [goalStats, setGoalStats] = useState({
+    total: 0,
+    active: 0,
+    completed: 0,
+    avgProgress: 0
+  });
   const { user } = useAuth();
 
-  // Force refresh function for manual updates
+  // Force refresh function
   const forceRefresh = async () => {
     setIsRefreshing(true);
     setRefreshTrigger(prev => prev + 1);
-    
-    // Add a small delay to show the refresh animation
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+    setTimeout(() => setIsRefreshing(false), 1000);
   };
 
-  // Enhanced real-time subscription for all relevant changes
+  // Calculate goal statistics
+  const calculateStats = async () => {
+    if (!goals.length) {
+      setGoalStats({ total: 0, active: 0, completed: 0, avgProgress: 0 });
+      return;
+    }
+
+    let totalProgress = 0;
+    let completedCount = 0;
+    let activeCount = 0;
+
+    // Import the hook function to calculate progress
+    const { getGoalProgress } = useGoals();
+
+    for (const goal of goals) {
+      try {
+        const progress = await getGoalProgress(goal.id);
+        if (progress) {
+          totalProgress += progress.percentage || 0;
+          if (progress.percentage === 100) {
+            completedCount++;
+          } else {
+            activeCount++;
+          }
+        }
+      } catch (error) {
+        console.error('Error calculating progress for goal:', goal.id, error);
+      }
+    }
+
+    setGoalStats({
+      total: goals.length,
+      active: activeCount,
+      completed: completedCount,
+      avgProgress: Math.round(totalProgress / goals.length)
+    });
+  };
+
+  useEffect(() => {
+    calculateStats();
+  }, [goals, refreshTrigger]);
+
+  // Enhanced real-time subscription
   useEffect(() => {
     if (!user) return;
 
-    console.log('Setting up comprehensive real-time subscription for goals dashboard');
     const channel = supabase
-      .channel('goals-dashboard-comprehensive')
+      .channel('goals-dashboard-realtime')
       .on(
         'postgres_changes',
         {
@@ -48,8 +91,7 @@ export const GoalsDashboard = () => {
           table: 'tasks',
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
-          console.log('Task change detected - forcing goals refresh:', payload);
+        () => {
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -60,8 +102,7 @@ export const GoalsDashboard = () => {
           schema: 'public',
           table: 'goal_tasks',
         },
-        (payload) => {
-          console.log('Goal-task association change - forcing goals refresh:', payload);
+        () => {
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -73,15 +114,13 @@ export const GoalsDashboard = () => {
           table: 'goals',
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
-          console.log('Goal change detected - forcing goals refresh:', payload);
+        () => {
           setRefreshTrigger(prev => prev + 1);
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up comprehensive goals dashboard real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -89,17 +128,8 @@ export const GoalsDashboard = () => {
   const filteredGoals = goals.filter(goal => {
     const matchesSearch = goal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          goal.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (statusFilter === 'all') return matchesSearch;
-    
     return matchesSearch;
   });
-
-  // Calculate statistics
-  const totalGoals = goals.length;
-  const activeGoals = goals.length; // For now, all goals are considered active
-  const completedGoals = 0; // TODO: Implement completion logic
-  const archivedGoals = 0; // TODO: Implement archive logic
 
   const handleCreateGoal = async (goalData: Partial<Goal>) => {
     try {
@@ -133,14 +163,6 @@ export const GoalsDashboard = () => {
     }
   };
 
-  const openEditForm = (goal: Goal) => {
-    setEditingGoal(goal);
-  };
-
-  const closeEditForm = () => {
-    setEditingGoal(null);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -153,16 +175,12 @@ export const GoalsDashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Enhanced Header */}
+    <div className="space-y-6 bg-slate-950 min-h-screen">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Goals Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Track your progress and achieve your objectives with real-time task integration
-          </p>
+          <h1 className="text-3xl font-bold text-white">Goals Dashboard</h1>
+          <p className="text-slate-400 mt-1">Track your progress and achieve your objectives</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -170,7 +188,7 @@ export const GoalsDashboard = () => {
             size="sm"
             onClick={forceRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -187,110 +205,95 @@ export const GoalsDashboard = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Target className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Target className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Goals</p>
-                <p className="text-2xl font-bold">{totalGoals}</p>
+                <p className="text-sm text-slate-400">Total Goals</p>
+                <p className="text-2xl font-bold text-blue-400">{goalStats.total}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-50 rounded-lg">
-                <Clock className="h-5 w-5 text-green-600" />
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-green-600">{activeGoals}</p>
+                <p className="text-sm text-slate-400">Active Goals</p>
+                <p className="text-2xl font-bold text-green-400">{goalStats.active}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <Trophy className="h-5 w-5 text-yellow-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold text-blue-600">{completedGoals}</p>
+                <p className="text-sm text-slate-400">Completed</p>
+                <p className="text-2xl font-bold text-yellow-400">{goalStats.completed}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-50 rounded-lg">
-                <Archive className="h-5 w-5 text-gray-600" />
+              <div className="p-2 bg-purple-500/20 rounded-lg">
+                <Clock className="h-5 w-5 text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Archived</p>
-                <p className="text-2xl font-bold text-gray-600">{archivedGoals}</p>
+                <p className="text-sm text-slate-400">Avg Progress</p>
+                <p className="text-2xl font-bold text-purple-400">{goalStats.avgProgress}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Filters</h3>
+      {/* Search and Filters */}
+      <div className="flex gap-4 items-center">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+          <Input
+            placeholder="Search goals, tags, descriptions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-slate-800 border-slate-600 text-white placeholder-slate-400"
+          />
         </div>
         
-        <div className="flex gap-4 items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search goals..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40 bg-slate-800 border-slate-600 text-white">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent className="bg-slate-800 border-slate-600">
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Goals Section */}
+      {/* Goals Grid */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Your Goals</h3>
-          <p className="text-sm text-muted-foreground">
-            {filteredGoals.length} of {totalGoals} goals
-          </p>
-        </div>
-
         {filteredGoals.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🎯</div>
-            <h3 className="text-lg font-semibold mb-2">No goals yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Create your first goal to start tracking your progress with real-time task integration
+            <h3 className="text-lg font-semibold mb-2 text-white">No goals yet</h3>
+            <p className="text-slate-400 mb-4">
+              Create your first goal to start tracking your progress
             </p>
             <Button 
               onClick={() => setIsGoalFormOpen(true)}
@@ -301,12 +304,12 @@ export const GoalsDashboard = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredGoals.map((goal) => (
               <div key={`${goal.id}-${refreshTrigger}`} className="animate-fade-in">
                 <GoalCard
                   goal={goal}
-                  onEdit={openEditForm}
+                  onEdit={(goal) => setEditingGoal(goal)}
                   onDelete={handleDeleteGoal}
                 />
               </div>
@@ -324,7 +327,7 @@ export const GoalsDashboard = () => {
 
       <GoalForm
         isOpen={!!editingGoal}
-        onClose={closeEditForm}
+        onClose={() => setEditingGoal(null)}
         onSubmit={handleUpdateGoal}
         goal={editingGoal}
       />

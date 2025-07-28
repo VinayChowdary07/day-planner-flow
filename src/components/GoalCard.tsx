@@ -5,12 +5,9 @@ import { Task } from '@/types/task';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Target, Calendar, Edit, Trash2, List, ChevronDown, ChevronUp, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
+import { Target, Calendar, Edit, Trash2, Trophy, User } from 'lucide-react';
 import { useGoals } from '@/hooks/useGoals';
 import { supabase } from '@/integrations/supabase/client';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { GoalProgressDisplay } from '@/components/GoalProgressDisplay';
-import { GoalTaskPreview } from '@/components/GoalTaskPreview';
 
 interface GoalCardProps {
   goal: Goal;
@@ -22,35 +19,21 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   const [progress, setProgress] = useState<GoalProgress | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const { getGoalProgress, getGoalTasks } = useGoals();
 
-  // Force refresh function
-  const forceRefresh = () => {
-    setRefreshKey(prev => prev + 1);
-  };
-
   const fetchGoalData = async () => {
     setLoading(true);
-    setError(null);
     try {
-      console.log(`Fetching data for goal: ${goal.id}`);
-      
       const [progressData, linkedTasks] = await Promise.all([
         getGoalProgress(goal.id),
         getGoalTasks(goal.id)
       ]);
       
-      console.log(`Goal ${goal.id} - Progress:`, progressData);
-      console.log(`Goal ${goal.id} - Tasks:`, linkedTasks);
-      
       setProgress(progressData);
       setTasks(linkedTasks);
     } catch (err) {
       console.error('Error fetching goal data:', err);
-      setError('Failed to load goal data');
     } finally {
       setLoading(false);
     }
@@ -60,10 +43,8 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
     fetchGoalData();
   }, [goal.id, refreshKey]);
 
-  // Enhanced real-time subscription with immediate updates
+  // Real-time subscription
   useEffect(() => {
-    console.log(`Setting up real-time listeners for goal: ${goal.id}`);
-    
     const channel = supabase
       .channel(`goal-${goal.id}-realtime`)
       .on(
@@ -73,9 +54,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           schema: 'public',
           table: 'tasks',
         },
-        (payload) => {
-          console.log(`Task change detected for goal ${goal.id}:`, payload);
-          // Immediate refresh on any task change
+        () => {
           fetchGoalData();
         }
       )
@@ -86,16 +65,13 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           schema: 'public',
           table: 'goal_tasks',
         },
-        (payload) => {
-          console.log(`Goal-task association change for goal ${goal.id}:`, payload);
-          // Immediate refresh on goal-task associations
+        () => {
           fetchGoalData();
         }
       )
       .subscribe();
 
     return () => {
-      console.log(`Cleaning up real-time listeners for goal: ${goal.id}`);
       supabase.removeChannel(channel);
     };
   }, [goal.id]);
@@ -109,76 +85,79 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
     });
   };
 
-  const getGoalStatusColor = () => {
-    if (!progress) return 'border-l-gray-400';
+  const getProgressColor = () => {
+    if (!progress || progress.percentage === null) return 'bg-gray-400';
     
-    if (progress.hasInfiniteRecurring) {
-      return 'border-l-blue-500';
-    }
-    
-    const percentage = progress.percentage || 0;
-    if (percentage >= 100) return 'border-l-green-500';
-    if (percentage >= 70) return 'border-l-blue-500';
-    if (percentage >= 40) return 'border-l-yellow-500';
-    return 'border-l-orange-500';
+    if (progress.percentage >= 100) return 'bg-green-500';
+    if (progress.percentage >= 70) return 'bg-blue-500';
+    if (progress.percentage >= 40) return 'bg-yellow-500';
+    return 'bg-orange-500';
   };
 
-  const getGoalStatusText = () => {
-    if (!progress) return 'No Progress';
+  const getCardBorderColor = () => {
+    if (!progress || progress.percentage === null) return 'border-t-gray-400';
     
-    if (progress.hasInfiniteRecurring) {
-      return 'Ongoing';
-    }
-    
-    const percentage = progress.percentage || 0;
-    if (percentage >= 100) return 'Completed';
-    if (percentage >= 70) return 'Nearly Done';
-    if (percentage >= 40) return 'In Progress';
-    return 'Getting Started';
+    if (progress.percentage >= 100) return 'border-t-green-500';
+    if (progress.percentage >= 70) return 'border-t-blue-500';
+    if (progress.percentage >= 40) return 'border-t-yellow-500';
+    return 'border-t-orange-500';
   };
 
-  const getGoalStatusBadgeColor = () => {
-    if (!progress) return 'bg-gray-100 text-gray-700';
-    
-    if (progress.hasInfiniteRecurring) {
-      return 'bg-blue-100 text-blue-700';
-    }
-    
-    const percentage = progress.percentage || 0;
-    if (percentage >= 100) return 'bg-green-100 text-green-700';
-    if (percentage >= 70) return 'bg-blue-100 text-blue-700';
-    if (percentage >= 40) return 'bg-yellow-100 text-yellow-700';
-    return 'bg-orange-100 text-orange-700';
-  };
+  const isCompleted = progress?.percentage === 100;
+  const completedTasks = progress?.completedTasks || 0;
+  const totalTasks = progress?.totalTasks || 0;
+  const progressPercentage = progress?.percentage || 0;
+
+  if (loading) {
+    return (
+      <Card className="h-64 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+        <CardContent className="p-6 h-full flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className={`group hover:shadow-xl transition-all duration-300 border-l-4 ${getGoalStatusColor()} bg-gradient-to-br from-white to-gray-50/50`}>
+    <Card className={`relative bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 border-t-4 ${getCardBorderColor()} hover:shadow-xl transition-all duration-300 group`}>
+      {/* Trophy icon for completed goals */}
+      {isCompleted && (
+        <div className="absolute top-4 right-4 z-10">
+          <Trophy className="h-6 w-6 text-yellow-500" />
+        </div>
+      )}
+
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <Target className="h-5 w-5 text-blue-500" />
-              <CardTitle className="text-lg font-semibold">{goal.title}</CardTitle>
-              <Badge 
-                variant="secondary" 
-                className={`text-xs font-medium ${getGoalStatusBadgeColor()}`}
-              >
-                {getGoalStatusText()}
-              </Badge>
+            <div className="flex items-center gap-2 mb-2">
+              <CardTitle className="text-xl font-bold text-white">{goal.title}</CardTitle>
+              {isCompleted && (
+                <Badge className="bg-green-600 text-white text-xs px-2 py-1">
+                  completed
+                </Badge>
+              )}
             </div>
+            
+            <div className="flex items-center gap-2 text-slate-400 text-sm mb-3">
+              <User className="h-4 w-4" />
+              <span>Personal</span>
+            </div>
+
             {goal.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 ml-8">
+              <p className="text-slate-300 text-sm mb-4 line-clamp-2">
                 {goal.description}
               </p>
             )}
           </div>
+
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {onEdit && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onEdit(goal)}
-                className="h-8 w-8 p-0 hover:bg-blue-100"
+                className="h-8 w-8 p-0 hover:bg-slate-700 text-slate-400 hover:text-white"
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -188,7 +167,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(goal.id)}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-red-100"
+                className="h-8 w-8 p-0 hover:bg-red-900 text-slate-400 hover:text-red-400"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -197,173 +176,58 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* Real-time Task Statistics */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-gray-700">Task Progress</h4>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={forceRefresh}
-              className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
-            >
-              <TrendingUp className="h-3 w-3" />
-            </Button>
+      <CardContent className="pt-0">
+        {/* Progress Section */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-slate-300 text-sm font-medium">Progress</span>
+            <span className="text-white text-lg font-bold">{progressPercentage}%</span>
           </div>
           
-          {loading ? (
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-2 bg-gray-200 rounded animate-pulse"></div>
-            </div>
-          ) : error ? (
-            <div className="text-red-600 text-sm">{error}</div>
-          ) : progress ? (
-            <div className="space-y-3">
-              {/* Task Count Display */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">
-                    {progress.completedTasks} of {progress.totalTasks} tasks completed
-                  </span>
-                </div>
-                <Badge className="bg-blue-100 text-blue-800 text-xs">
-                  {tasks.length} total
-                </Badge>
-              </div>
-
-              {/* Progress Bar */}
-              {!progress.hasInfiniteRecurring && (
-                <div className="space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2.5 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${progress.percentage || 0}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>0%</span>
-                    <span className="font-medium">{progress.percentage || 0}%</span>
-                    <span>100%</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Recurring Tasks Indicator */}
-              {progress.hasInfiniteRecurring && (
-                <div className="flex items-center gap-2 text-blue-600">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-sm">Ongoing goal with recurring tasks</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-gray-500 text-sm">No task data available</div>
-          )}
+          <div className="w-full bg-slate-700 rounded-full h-2 mb-4">
+            <div 
+              className={`h-2 rounded-full transition-all duration-500 ${getProgressColor()}`}
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
         </div>
 
-        {/* Enhanced Progress Display */}
-        <GoalProgressDisplay 
-          progress={progress}
-          loading={loading}
-          error={error}
-        />
+        {/* Task Statistics */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-400">{completedTasks}</div>
+            <div className="text-slate-400 text-sm">Tasks Done</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-400">{totalTasks - completedTasks}</div>
+            <div className="text-slate-400 text-sm">Milestones</div>
+          </div>
+        </div>
 
-        {/* Task Preview Section */}
-        {tasks.length > 0 && (
-          <div className="border-t pt-4">
-            <GoalTaskPreview tasks={tasks} maxPreview={2} />
+        {/* Tags */}
+        {goal.description && (
+          <div className="flex flex-wrap gap-1 mb-4">
+            {goal.description.split(' ').slice(0, 3).map((tag, index) => (
+              <Badge key={index} variant="outline" className="text-xs bg-slate-800 text-slate-300 border-slate-600">
+                {tag}
+              </Badge>
+            ))}
           </div>
         )}
 
-        {/* Expandable Full Task List */}
-        {tasks.length > 2 && (
-          <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-between p-3 h-auto hover:bg-muted/50 transition-colors"
-                size="sm"
-              >
-                <div className="flex items-center gap-2">
-                  <List className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium">
-                    View All Tasks ({tasks.length})
-                  </span>
-                </div>
-                {isExpanded ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 mt-3">
-              <div className="grid gap-2">
-                {tasks.slice(2).map((task) => (
-                  <Card key={task.id} className="p-3 bg-muted/20 border-muted">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className={`text-sm font-medium truncate ${
-                            task.status === 'complete' ? 'line-through text-muted-foreground' : ''
-                          }`}>
-                            {task.title}
-                          </p>
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs"
-                          >
-                            {task.priority}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          <span>{formatDate(task.task_date)}</span>
-                          {task.recurrence && task.recurrence !== 'none' && (
-                            <Badge variant="outline" className="text-xs">
-                              {task.recurrence}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-xs ml-2 ${
-                          task.status === 'complete' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-orange-100 text-orange-800'
-                        }`}
-                      >
-                        {task.status}
-                      </Badge>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Goal Date Range */}
-        {(goal.start_date || goal.end_date) && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t">
-            <Calendar className="h-4 w-4" />
-            <span>
-              {goal.start_date && formatDate(goal.start_date)}
-              {goal.start_date && goal.end_date && ' → '}
-              {goal.end_date && formatDate(goal.end_date)}
-            </span>
-          </div>
-        )}
-
-        {/* Footer with creation date */}
-        <div className="flex items-center justify-between pt-3 border-t text-xs text-muted-foreground">
-          <span>Created {formatDate(goal.created_at)}</span>
-          {tasks.length > 0 && (
-            <span>{tasks.length} task{tasks.length !== 1 ? 's' : ''} linked</span>
+        {/* Dates */}
+        <div className="space-y-2 text-xs text-slate-400">
+          {goal.start_date && (
+            <div className="flex items-center gap-2">
+              <Calendar className="h-3 w-3" />
+              <span>Started: {formatDate(goal.start_date)}</span>
+            </div>
+          )}
+          {goal.end_date && (
+            <div className="flex items-center gap-2">
+              <Target className="h-3 w-3" />
+              <span>Target: {formatDate(goal.end_date)}</span>
+            </div>
           )}
         </div>
       </CardContent>
