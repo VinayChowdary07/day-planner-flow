@@ -336,14 +336,14 @@ export const CalendarView = () => {
           </div>
         ))}
         {days}
-        <style jsx>{`
+        <style>{`
           .calendar-day .draggable-item {
             pointer-events: auto;
           }
           .calendar-day .draggable-item:focus,
           .calendar-day .draggable-item:active {
             outline: none !important;
-            border-color: transparent !important;
+            border-color: currentColor !important;
           }
           .calendar-day .draggable-item[draggable="true"] {
             -webkit-user-select: none;
@@ -353,9 +353,18 @@ export const CalendarView = () => {
             outline: none !important;
           }
           .calendar-day .draggable-item.dragging {
-            border: 1px solid hsl(var(--primary)) !important;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+            border-color: hsl(var(--primary)) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
             background: hsl(var(--primary) / 0.1) !important;
+            transform: scale(1.02);
+            z-index: 1000;
+          }
+          .calendar-day {
+            position: relative;
+          }
+          .calendar-day .drag-container {
+            position: relative;
+            z-index: 1;
           }
         `}</style>
       </div>

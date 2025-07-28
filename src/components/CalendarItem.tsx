@@ -29,20 +29,18 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
     }));
     onDragStart(item.id, type, item);
     
-    // Remove default drag outline
+    // Add dragging class
     const target = e.target as HTMLElement;
-    target.style.outline = 'none';
-    target.style.border = 'none';
+    target.classList.add('dragging');
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
     console.log('Drag end event triggered for:', item.id);
     e.dataTransfer.clearData();
     
-    // Reset styles
+    // Remove dragging class
     const target = e.target as HTMLElement;
-    target.style.outline = '';
-    target.style.border = '';
+    target.classList.remove('dragging');
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -119,13 +117,13 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         .drag-item:focus,
         .drag-item:active,
         .drag-item[draggable="true"]:focus,
         .drag-item[draggable="true"]:active {
           outline: none !important;
-          border: none !important;
+          border-color: currentColor !important;
           box-shadow: none !important;
         }
         
@@ -140,6 +138,19 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
           -moz-user-select: none;
           -ms-user-select: none;
           user-select: none;
+        }
+
+        .drag-item.dragging {
+          border-color: hsl(var(--primary)) !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+          background: hsl(var(--primary) / 0.1) !important;
+          transform: scale(1.02);
+          z-index: 1000;
+        }
+
+        .drag-item:focus-visible {
+          outline: 2px solid hsl(var(--primary)) !important;
+          outline-offset: 2px !important;
         }
       `}</style>
     </div>
