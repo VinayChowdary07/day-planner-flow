@@ -194,11 +194,12 @@ export const CalendarView = () => {
     
     let dragData = null;
     
-    // Try to get drag data from multiple sources
+    // Try to get drag data from dataTransfer first
     try {
       const jsonData = e.dataTransfer.getData('application/json');
       if (jsonData) {
         dragData = JSON.parse(jsonData);
+        console.log('Got drag data from dataTransfer:', dragData);
       }
     } catch (error) {
       console.log('No JSON data found in drag transfer');
@@ -207,6 +208,7 @@ export const CalendarView = () => {
     // Fallback to draggedItem from hook
     if (!dragData && draggedItem) {
       dragData = draggedItem;
+      console.log('Using draggedItem from hook:', dragData);
     }
     
     if (!dragData || !isValidDropTarget(date)) {
@@ -265,7 +267,7 @@ export const CalendarView = () => {
             min-h-[120px] border border-border p-2 transition-all duration-200
             ${isCurrentMonth 
               ? 'bg-background hover:bg-accent/50 cursor-pointer' 
-              : 'bg-muted/20 cursor-default opacity-30'
+              : 'bg-muted/20 cursor-not-allowed opacity-30 pointer-events-none'
             }
             ${isSelected && isCurrentMonth ? 'bg-primary/10 border-primary' : ''}
             ${isToday && isCurrentMonth ? 'ring-2 ring-primary ring-offset-2' : ''}
@@ -273,8 +275,16 @@ export const CalendarView = () => {
             ${isDragging && !isValidDrop ? 'border-2 border-dashed border-destructive/50 bg-destructive/5' : ''}
           `}
           onClick={() => handleDateClick(day)}
-          onDragOver={(e) => isCurrentMonth && handleDragOver(e, day)}
-          onDrop={(e) => isCurrentMonth && handleDropOnDate(day, e)}
+          onDragOver={(e) => {
+            if (isCurrentMonth) {
+              handleDragOver(e, day);
+            }
+          }}
+          onDrop={(e) => {
+            if (isCurrentMonth) {
+              handleDropOnDate(day, e);
+            }
+          }}
         >
           <div className={`text-sm font-medium mb-1 ${
             isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'
