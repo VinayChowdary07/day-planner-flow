@@ -190,18 +190,39 @@ export const CalendarView = () => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!draggedItem || !isValidDropTarget(date)) {
+    console.log('Drop event triggered on date:', date);
+    
+    let dragData = null;
+    
+    // Try to get drag data from multiple sources
+    try {
+      const jsonData = e.dataTransfer.getData('application/json');
+      if (jsonData) {
+        dragData = JSON.parse(jsonData);
+      }
+    } catch (error) {
+      console.log('No JSON data found in drag transfer');
+    }
+    
+    // Fallback to draggedItem from hook
+    if (!dragData && draggedItem) {
+      dragData = draggedItem;
+    }
+    
+    if (!dragData || !isValidDropTarget(date)) {
+      console.log('Invalid drop - no drag data or invalid target');
       endDrag();
       return;
     }
 
     const clampedDate = clampDateToCurrentMonth(date);
+    console.log('Processing drop with data:', dragData, 'on date:', clampedDate);
 
     try {
       await handleDrop(clampedDate, updateEvent, updateTask);
       toast({
         title: 'Success',
-        description: `${draggedItem.type === 'event' ? 'Event' : 'Task'} moved successfully`,
+        description: `${dragData.type === 'event' ? 'Event' : 'Task'} moved successfully`,
       });
       loadEvents();
     } catch (error) {

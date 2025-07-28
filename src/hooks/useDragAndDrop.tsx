@@ -16,7 +16,8 @@ export const useDragAndDrop = () => {
   const startDrag = useCallback((id: string, type: 'event' | 'task', data: any) => {
     console.log('Starting drag:', { id, type, data });
     const originalDate = type === 'event' ? data.start_datetime : data.task_date;
-    setDraggedItem({ id, type, originalDate, data });
+    const dragItem = { id, type, originalDate, data };
+    setDraggedItem(dragItem);
     setIsDragging(true);
   }, []);
 

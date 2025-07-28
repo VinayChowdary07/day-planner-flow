@@ -20,9 +20,19 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
   className,
 }) => {
   const handleDragStart = (e: React.DragEvent) => {
+    console.log('Drag start event triggered for:', item.id);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', ''); // For Firefox compatibility
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      id: item.id,
+      type: type,
+      data: item
+    }));
     onDragStart(item.id, type, item);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    console.log('Drag end event triggered for:', item.id);
+    e.dataTransfer.clearData();
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -49,8 +59,9 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
 
   return (
     <div
-      draggable
+      draggable={true}
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onClick={handleClick}
       className={cn(
         'text-xs p-1.5 rounded border-l-2 cursor-grab active:cursor-grabbing hover:opacity-80 transition-all duration-200 select-none',
