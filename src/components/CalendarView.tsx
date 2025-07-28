@@ -54,45 +54,54 @@ export const CalendarView = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMonth]);
 
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const startDate = startOfMonth(currentMonth);
-      const endDate = endOfMonth(currentMonth);
+const fetchEvents = async () => {
+  setLoading(true);
+  try {
+    const startDate = startOfMonth(currentMonth);
+    const endDate = endOfMonth(currentMonth);
 
-      const { data, error } = await supabase.functions.invoke('outlook-calendar', {
-        body: {
-          action: 'events',
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
-        },
-      });
+    const { data, error } = await supabase.functions.invoke('outlook-calendar', {
+      body: {
+        action: 'events',
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+      },
+    });
 
-      if (error) throw error;
-
-      // Null check and type safety before accessing events
-      if (
-        data !== null &&
-        typeof data === 'object' &&
-        'events' in data &&
-        Array.isArray((data as any).events)
-      ) {
-        setEvents((data as any).events as CalendarEvent[]);
-      } else {
-        setEvents([]);
-      }
-    } catch (error) {
-      console.error('Error fetching events:', error);
+    if (error) {
+      console.error('Supabase function error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch calendar events',
+        description: 'Failed to fetch calendar events (API error)',
         variant: 'destructive',
       });
       setEvents([]);
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+
+    if (data && typeof data === 'object' && 'events' in data && Array.isArray(data.events)) {
+      setEvents(data.events);
+    } else {
+      console.warn('Unexpected or empty data received:', data);
+      setEvents([]);
+      toast({
+        title: 'Warning',
+        description: 'No calendar events found for the selected range.',
+        variant: 'default',
+      });
+    }
+  } catch (err) {
+    console.error('Exception while fetching events:', err);
+    toast({
+      title: 'Error',
+      description: 'Failed to fetch calendar events due to network or server error.',
+      variant: 'destructive',
+    });
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const checkOutlookConnection = async () => {
     try {
