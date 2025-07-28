@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
-import { TaskCard } from '@/components/TaskCard';
+import { SwipeableTaskCard } from '@/components/SwipeableTaskCard';
 import { TaskForm } from '@/components/TaskForm';
+import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
 import { useTasks } from '@/hooks/useTasks';
 import { Task, TaskFilters } from '@/types/task';
 import { Input } from '@/components/ui/input';
@@ -63,6 +64,14 @@ export const TasksDashboard = () => {
     }
   };
 
+  const handleReschedule = (id: string) => {
+    // For now, just open the edit form
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      setEditingTask(task);
+    }
+  };
+
   const handleEditSuccess = () => {
     console.log('Edit success, closing form');
     setEditingTask(null);
@@ -78,6 +87,7 @@ export const TasksDashboard = () => {
   const completedTasks = tasks.filter(task => task.status === 'complete').length;
   const pendingTasks = tasks.filter(task => task.status === 'incomplete').length;
   const highPriorityTasks = tasks.filter(task => task.priority === 'high' && task.status === 'incomplete').length;
+  const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
   if (loading) {
     return (
@@ -97,6 +107,20 @@ export const TasksDashboard = () => {
         </div>
         <TaskForm />
       </div>
+
+      {/* Progress Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Task Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AnimatedProgressBar
+            value={completionRate}
+            label="Overall Completion"
+            showCompletion={completionRate === 100}
+          />
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -222,6 +246,9 @@ export const TasksDashboard = () => {
               {filteredTasks.length} of {totalTasks} tasks
             </Badge>
           </div>
+          <p className="text-sm text-muted-foreground">
+            💡 Tip: Swipe left on any task to reveal quick actions
+          </p>
         </CardHeader>
         <CardContent>
           {filteredTasks.length === 0 ? (
@@ -238,12 +265,13 @@ export const TasksDashboard = () => {
           ) : (
             <div className="space-y-3">
               {filteredTasks.map((task) => (
-                <TaskCard 
+                <SwipeableTaskCard
                   key={task.id} 
                   task={task} 
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onToggleComplete={handleToggleComplete}
+                  onReschedule={handleReschedule}
                 />
               ))}
             </div>

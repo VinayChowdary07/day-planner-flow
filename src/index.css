@@ -129,6 +129,18 @@
   .animate-swipe-action {
     animation: swipeReveal 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
 
 @keyframes progressFill {
@@ -164,6 +176,37 @@
   }
 }
 
+@keyframes scaleIn {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Dark mode specific refinements */
 .dark .shadow-elegant {
   box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.1);
@@ -191,4 +234,22 @@
 .dark .input-refined:focus {
   border-color: hsl(var(--primary));
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+/* Drag and Drop styles */
+.sortable-ghost {
+  opacity: 0.5;
+}
+
+.sortable-chosen {
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px -5px hsl(var(--primary) / 0.3);
+}
+
+/* Mobile-friendly touch targets */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
