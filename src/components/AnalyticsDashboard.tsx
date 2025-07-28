@@ -21,7 +21,34 @@ import {
 export const AnalyticsDashboard = () => {
   const { tasks, loading: tasksLoading } = useTasks();
   const { projects, loading: projectsLoading } = useProjects();
-  const { goals, loading: goalsLoading } = useGoals();
+  const { goals, loading: goalsLoading, getGoalProgress } = useGoals();
+  const [goalsProgress, setGoalsProgress] = useState<Array<{ goalId: string; progress: number; totalTasks: number; completedTasks: number }>>([]);
+
+  // Calculate goal progress for all goals
+  useEffect(() => {
+    const calculateAllGoalsProgress = async () => {
+      if (!goals || goals.length === 0) {
+        setGoalsProgress([]);
+        return;
+      }
+
+      const progressData = [];
+      for (const goal of goals) {
+        const progress = await getGoalProgress(goal.id);
+        if (progress) {
+          progressData.push({
+            goalId: goal.id,
+            progress: progress.percentage || 0,
+            totalTasks: progress.totalTasks,
+            completedTasks: progress.completedTasks,
+          });
+        }
+      }
+      setGoalsProgress(progressData);
+    };
+
+    calculateAllGoalsProgress();
+  }, [goals, getGoalProgress, tasks]); // Re-calculate when tasks change
 
   // Calculate real-time statistics with proper error handling
   const tasksCompletedToday = tasks?.filter(task => {
@@ -39,21 +66,12 @@ export const AnalyticsDashboard = () => {
     return new Date(goal.end_date) >= new Date();
   }).length || 0;
   
-  const goalsAchievedThisWeek = goals?.filter(goal => {
-    if (!goal.updated_at) return false;
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const updatedDate = new Date(goal.updated_at);
-    
-    // Consider goals with end_date in the past week as achieved this week
-    if (goal.end_date) {
-      const endDate = new Date(goal.end_date);
-      return endDate >= weekAgo && endDate <= new Date() && updatedDate >= weekAgo;
-    }
-    
-    // Fallback: consider recently updated goals as potentially achieved
-    return updatedDate >= weekAgo;
-  }).length || 0;
+  // Calculate completed goals based on their progress
+  const goalsCompleted = goalsProgress.filter(progress => progress.progress === 100).length;
+  
+  const goalsAchievedThisWeek = goalsProgress.filter(progress => {
+    return progress.progress === 100; // Consider 100% progress as achieved
+  }).length;
 
   // Total counts - these should include ALL items regardless of status
   const totalTasks = tasks?.length || 0;
@@ -63,15 +81,17 @@ export const AnalyticsDashboard = () => {
   // Completed counts
   const totalTasksCompleted = tasks?.filter(task => task.status === 'complete').length || 0;
   const totalProjectsCompleted = projects?.filter(project => project.status === 'completed').length || 0;
-  const totalGoalsAchieved = goals?.filter(goal => {
-    // Consider goals with end_date in the past as achieved
-    return goal.end_date && new Date(goal.end_date) < new Date();
-  }).length || 0;
+  const totalGoalsAchieved = goalsCompleted;
 
   // Completion rates
   const taskCompletionRate = totalTasks > 0 ? Math.round((totalTasksCompleted / totalTasks) * 100) : 0;
   const projectCompletionRate = totalProjects > 0 ? Math.round((totalProjectsCompleted / totalProjects) * 100) : 0;
   const goalAchievementRate = totalGoals > 0 ? Math.round((totalGoalsAchieved / totalGoals) * 100) : 0;
+
+  // Calculate average goal progress
+  const averageGoalProgress = goalsProgress.length > 0 
+    ? Math.round(goalsProgress.reduce((sum, progress) => sum + progress.progress, 0) / goalsProgress.length)
+    : 0;
 
   const isLoading = tasksLoading || projectsLoading || goalsLoading;
 
@@ -136,16 +156,16 @@ export const AnalyticsDashboard = () => {
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">
-              Goals In Progress
+              Average Goal Progress
             </CardTitle>
             <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-              {goalsInProgress}
+              {averageGoalProgress}%
             </div>
             <p className="text-xs text-purple-600 dark:text-purple-400">
-              On track to achieve
+              Across all goals
             </p>
           </CardContent>
         </Card>
@@ -153,16 +173,16 @@ export const AnalyticsDashboard = () => {
         <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
-              Goals Achieved This Week
+              Goals Completed
             </CardTitle>
             <Award className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-              {goalsAchievedThisWeek}
+              {goalsCompleted}
             </div>
             <p className="text-xs text-green-600 dark:text-green-400">
-              Excellent progress!
+              100% progress achieved
             </p>
           </CardContent>
         </Card>

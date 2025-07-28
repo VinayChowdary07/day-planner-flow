@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Goal, GoalTask, GoalProgress, GoalFilters } from '@/types/goal';
@@ -304,29 +303,20 @@ export const useGoals = () => {
 
       const tasks = await getGoalTasks(goalId);
       
-      let totalTasks = 0;
-      let completedTasks = 0;
-      let totalRecurringCompletions = 0;
-      let hasInfiniteRecurring = false;
+      // Simple calculation: completed tasks / total tasks
+      const totalTasks = tasks.length;
+      const completedTasks = tasks.filter(task => task.status === 'complete').length;
+      
+      // Check if any tasks are recurring for the infinite indicator
+      const hasInfiniteRecurring = tasks.some(task => task.recurrence && task.recurrence !== 'none');
+      
+      // Count recurring completions for display purposes
+      const totalRecurringCompletions = tasks.filter(task => 
+        task.recurrence && task.recurrence !== 'none' && task.status === 'complete'
+      ).length;
 
-      for (const task of tasks) {
-        if (task.recurrence && task.recurrence !== 'none') {
-          hasInfiniteRecurring = true;
-          totalRecurringCompletions++;
-          
-          if (task.status === 'complete') {
-            completedTasks++;
-          }
-        } else {
-          totalTasks++;
-          if (task.status === 'complete') {
-            completedTasks++;
-          }
-        }
-      }
-
-      const percentage = hasInfiniteRecurring ? null : 
-        totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      // Calculate percentage: if no tasks, show 0%; otherwise show actual percentage
+      const percentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
       const progress = {
         goal,
