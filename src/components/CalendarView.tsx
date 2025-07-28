@@ -110,7 +110,8 @@ export const CalendarView = () => {
 
       // Fixed null check - ensure data exists before accessing properties
       if (data && typeof data === 'object' && 'outlook_access_token' in data) {
-        const accessToken = (data as Record<string, any>)['outlook_access_token'];
+        const settingsData = data as Record<string, any>;
+        const accessToken = settingsData['outlook_access_token'];
         setIsConnectedToOutlook(!!accessToken);
       } else {
         setIsConnectedToOutlook(false);
