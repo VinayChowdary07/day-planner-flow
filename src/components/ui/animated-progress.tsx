@@ -1,9 +1,9 @@
 
-import * as React from "react"
-import * as ProgressPrimitive from "@radix-ui/react-progress"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import * as ProgressPrimitive from "@radix-ui/react-progress";
+import { cn } from "@/lib/utils";
 
-const Progress = React.forwardRef<
+const AnimatedProgress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
     animated?: boolean;
@@ -42,6 +42,6 @@ const Progress = React.forwardRef<
   );
 });
 
-Progress.displayName = ProgressPrimitive.Root.displayName;
+AnimatedProgress.displayName = "AnimatedProgress";
 
-export { Progress };
+export { AnimatedProgress };
