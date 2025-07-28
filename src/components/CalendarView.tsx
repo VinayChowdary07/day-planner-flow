@@ -43,7 +43,7 @@ export const CalendarView = () => {
     description: '',
     start: '',
     end: '',
-    location: ''
+    location: '',
   });
   const [isConnectedToOutlook, setIsConnectedToOutlook] = useState(false);
   const { toast } = useToast();
@@ -51,6 +51,7 @@ export const CalendarView = () => {
   useEffect(() => {
     fetchEvents();
     checkOutlookConnection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMonth]);
 
   const fetchEvents = async () => {
@@ -68,8 +69,13 @@ export const CalendarView = () => {
       });
 
       if (error) throw error;
-      
-      setEvents(data?.events || []);
+
+      // Null and type safe check before accessing data.events
+      if (data && typeof data === 'object' && 'events' in data && Array.isArray((data as any).events)) {
+        setEvents((data as any).events as CalendarEvent[]);
+      } else {
+        setEvents([]); // fallback to empty array if no events
+      }
     } catch (error) {
       console.error('Error fetching events:', error);
       toast({
@@ -77,6 +83,7 @@ export const CalendarView = () => {
         description: 'Failed to fetch calendar events',
         variant: 'destructive',
       });
+      setEvents([]); // clear events on failure
     } finally {
       setLoading(false);
     }
@@ -84,47 +91,45 @@ export const CalendarView = () => {
 
   const checkOutlookConnection = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Use raw query to bypass type checking issues
       const { data, error } = await supabase
         .from('user_calendar_settings' as any)
         .select('outlook_access_token')
         .eq('user_id', user.id)
         .single();
 
+      // Allow "no rows found" error code PGRST116 silently (means no data yet)
       if (error && error.code !== 'PGRST116') {
         console.error('Error checking Outlook connection:', error);
         return;
       }
 
-     essing data.events
-      if (data && typeof data === 'object' && 'events' in data && Array.isArray((data as any).events)) {
-        setEvents((data as any).events as CalendarEvent[]);
+      // Null-safe check and setting connection flag
+      if (data && typeof data === 'object' && 'outlook_access_token' in data) {
+        const accessToken = (data as Record<string, any>)['outlook_access_token'];
+        setIsConnectedToOutlook(!!accessToken);
       } else {
-        setEvents([]); // fallback: no events
+        setIsConnectedToOutlook(false);
       }
     } catch (error) {
-      console.error('Error fetching events:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch calendar events',
-        variant: 'destructive',
-      });
-       setEvents([]); // On failure, clear the events
-    } finally {
-      setLoading(false);
+      console.error('Error checking Outlook connection:', error);
+      setIsConnectedToOutlook(false);
     }
   };
 
   const connectToOutlook = () => {
-    const clientId = 'your-outlook-client-id'; // This should be configured in your environment
+    const clientId = 'your-outlook-client-id'; // Replace with your environment variable or config
     const redirectUri = `${window.location.origin}/auth/outlook/callback`;
     const scope = 'https://graph.microsoft.com/calendars.readwrite offline_access';
-    
-    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
-    
+
+    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(
+      redirectUri,
+    )}&scope=${encodeURIComponent(scope)}`;
+
     window.location.href = authUrl;
   };
 
@@ -159,9 +164,9 @@ export const CalendarView = () => {
         description: '',
         start: '',
         end: '',
-        location: ''
+        location: '',
       });
-      
+
       fetchEvents();
     } catch (error) {
       console.error('Error creating event:', error);
@@ -174,7 +179,7 @@ export const CalendarView = () => {
   };
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => {
+    return events.filter((event) => {
       const eventDate = parseISO(event.start);
       return isSameDay(eventDate, date);
     });
@@ -222,19 +227,17 @@ export const CalendarView = () => {
               </div>
             ))}
             {dayEvents.length > 3 && (
-              <div className="text-xs text-muted-foreground">
-                +{dayEvents.length - 3} more
-              </div>
+              <div className="text-xs text-muted-foreground">+{dayEvents.length - 3} more</div>
             )}
           </div>
-        </div>
+        </div>,
       );
       day = addDays(day, 1);
     }
 
     return (
       <div className="grid grid-cols-7 gap-0">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
           <div key={day} className="p-3 text-center font-medium bg-muted">
             {day}
           </div>
@@ -250,7 +253,7 @@ export const CalendarView = () => {
 
     return (
       <div className="grid grid-cols-7 gap-2">
-        {weekDays.map(day => {
+        {weekDays.map((day) => {
           const dayEvents = getEventsForDate(day);
           const isToday = isSameDay(day, new Date());
 
@@ -322,14 +325,14 @@ export const CalendarView = () => {
             </Button>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {!isConnectedToOutlook && (
             <Button onClick={connectToOutlook} variant="outline" size="sm">
               Connect Outlook
             </Button>
           )}
-          
+
           <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -347,7 +350,7 @@ export const CalendarView = () => {
                   <Input
                     id="title"
                     value={eventForm.title}
-                    onChange={(e) => setEventForm(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="Event title"
                   />
                 </div>
@@ -356,7 +359,7 @@ export const CalendarView = () => {
                   <Textarea
                     id="description"
                     value={eventForm.description}
-                    onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, description: e.target.value }))}
                     placeholder="Event description"
                   />
                 </div>
@@ -367,7 +370,7 @@ export const CalendarView = () => {
                       id="start"
                       type="datetime-local"
                       value={eventForm.start}
-                      onChange={(e) => setEventForm(prev => ({ ...prev, start: e.target.value }))}
+                      onChange={(e) => setEventForm((prev) => ({ ...prev, start: e.target.value }))}
                     />
                   </div>
                   <div>
@@ -376,7 +379,7 @@ export const CalendarView = () => {
                       id="end"
                       type="datetime-local"
                       value={eventForm.end}
-                      onChange={(e) => setEventForm(prev => ({ ...prev, end: e.target.value }))}
+                      onChange={(e) => setEventForm((prev) => ({ ...prev, end: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -385,7 +388,7 @@ export const CalendarView = () => {
                   <Input
                     id="location"
                     value={eventForm.location}
-                    onChange={(e) => setEventForm(prev => ({ ...prev, location: e.target.value }))}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, location: e.target.value }))}
                     placeholder="Event location"
                   />
                 </div>
@@ -393,9 +396,7 @@ export const CalendarView = () => {
                   <Button variant="outline" onClick={() => setShowEventDialog(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={createEvent}>
-                    Create Event
-                  </Button>
+                  <Button onClick={createEvent}>Create Event</Button>
                 </div>
               </div>
             </DialogContent>
@@ -405,23 +406,13 @@ export const CalendarView = () => {
 
       {/* Calendar Navigation */}
       <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={() => navigateMonth('prev')}
-          disabled={loading}
-        >
+        <Button variant="outline" onClick={() => navigateMonth('prev')} disabled={loading}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        
-        <h2 className="text-lg font-semibold">
-          {format(currentMonth, 'MMMM yyyy')}
-        </h2>
-        
-        <Button
-          variant="outline"
-          onClick={() => navigateMonth('next')}
-          disabled={loading}
-        >
+
+        <h2 className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</h2>
+
+        <Button variant="outline" onClick={() => navigateMonth('next')} disabled={loading}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -435,9 +426,7 @@ export const CalendarView = () => {
               <p className="text-muted-foreground">Loading calendar...</p>
             </div>
           ) : (
-            <div className="p-4">
-              {view === 'month' ? renderMonthView() : renderWeekView()}
-            </div>
+            <div className="p-4">{view === 'month' ? renderMonthView() : renderWeekView()}</div>
           )}
         </CardContent>
       </Card>
@@ -462,9 +451,7 @@ export const CalendarView = () => {
                   </Badge>
                   <div className="flex-1">
                     <h4 className="font-medium">{event.title}</h4>
-                    {event.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
-                    )}
+                    {event.description && <p className="text-sm text-muted-foreground mt-1">{event.description}</p>}
                     <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                       {event.start && (
                         <div className="flex items-center gap-1">
