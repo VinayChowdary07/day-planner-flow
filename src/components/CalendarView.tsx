@@ -101,7 +101,7 @@ export const CalendarView = () => {
 
       if (data && typeof data === 'object' && !('error' in data) && data !== null) {
         const settingsData = data as any;
-        const accessToken = settingsData?.outlook_access_token;
+        const accessToken = settingsData.outlook_access_token;
         setIsConnectedToOutlook(!!accessToken);
       }
     } catch (error) {
