@@ -28,7 +28,7 @@ export const RecentActivity = ({ tasks, projects, goals }: RecentActivityProps) 
     
     // Add recent task completions
     tasks?.forEach(task => {
-      if (task.completed && task.updated_at) {
+      if (task.status === 'complete' && task.updated_at) {
         activities.push({
           id: `task-${task.id}`,
           type: 'task',
@@ -59,11 +59,12 @@ export const RecentActivity = ({ tasks, projects, goals }: RecentActivityProps) 
     // Add recent goal achievements
     goals?.forEach(goal => {
       if (goal.updated_at) {
+        const isAchieved = goal.end_date && new Date(goal.end_date) < new Date();
         activities.push({
           id: `goal-${goal.id}`,
           type: 'goal',
           title: goal.title,
-          action: goal.status === 'completed' ? 'achieved' : 'updated',
+          action: isAchieved ? 'achieved' : 'updated',
           timestamp: new Date(goal.updated_at),
           icon: Target,
           color: 'text-purple-600 dark:text-purple-400',

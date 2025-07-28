@@ -25,24 +25,32 @@ export const AnalyticsDashboard = () => {
   // Calculate real-time statistics
   const tasksCompletedToday = tasks?.filter(task => {
     const today = new Date().toDateString();
-    return task.completed && task.updated_at && 
+    return task.status === 'complete' && task.updated_at && 
            new Date(task.updated_at).toDateString() === today;
   }).length || 0;
 
   const activeProjects = projects?.filter(project => project.status === 'active').length || 0;
   
-  const goalsInProgress = goals?.filter(goal => goal.status === 'in_progress').length || 0;
+  const goalsInProgress = goals?.filter(goal => {
+    // A goal is in progress if it has an end_date in the future or no end_date
+    if (!goal.end_date) return true;
+    return new Date(goal.end_date) >= new Date();
+  }).length || 0;
   
   const goalsAchievedThisWeek = goals?.filter(goal => {
-    if (goal.status !== 'completed') return false;
+    // For now, we'll consider goals with recent updates as achieved
+    // In a real scenario, you'd have a completion status
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     return goal.updated_at && new Date(goal.updated_at) >= weekAgo;
   }).length || 0;
 
-  const totalTasksCompleted = tasks?.filter(task => task.completed).length || 0;
+  const totalTasksCompleted = tasks?.filter(task => task.status === 'complete').length || 0;
   const totalProjectsCompleted = projects?.filter(project => project.status === 'completed').length || 0;
-  const totalGoalsAchieved = goals?.filter(goal => goal.status === 'completed').length || 0;
+  const totalGoalsAchieved = goals?.filter(goal => {
+    // Consider goals with end_date in the past as achieved
+    return goal.end_date && new Date(goal.end_date) < new Date();
+  }).length || 0;
 
   const isLoading = tasksLoading || projectsLoading || goalsLoading;
 

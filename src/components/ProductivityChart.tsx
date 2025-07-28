@@ -18,7 +18,7 @@ export const ProductivityChart = ({ tasks }: ProductivityChartProps) => {
       const dateStr = date.toDateString();
       
       const completedTasks = tasks?.filter(task => {
-        return task.completed && task.updated_at && 
+        return task.status === 'complete' && task.updated_at && 
                new Date(task.updated_at).toDateString() === dateStr;
       }).length || 0;
       
