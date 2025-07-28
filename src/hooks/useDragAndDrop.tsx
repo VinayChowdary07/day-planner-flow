@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 
 interface DragItem {
   id: string;
@@ -32,7 +32,8 @@ export const useDragAndDrop = () => {
     if (!draggedItem) return;
 
     try {
-      const dateString = format(targetDate, 'yyyy-MM-dd');
+      // Ensure the target date is properly normalized to start of day
+      const normalizedTargetDate = startOfDay(targetDate);
       
       if (draggedItem.type === 'event') {
         // For events, update the start_datetime and end_datetime
@@ -40,8 +41,8 @@ export const useDragAndDrop = () => {
         const originalEnd = parseISO(draggedItem.data.end_datetime);
         const duration = originalEnd.getTime() - originalStart.getTime();
         
-        const newStart = new Date(targetDate);
-        newStart.setHours(originalStart.getHours(), originalStart.getMinutes());
+        const newStart = new Date(normalizedTargetDate);
+        newStart.setHours(originalStart.getHours(), originalStart.getMinutes(), originalStart.getSeconds());
         
         const newEnd = new Date(newStart.getTime() + duration);
         
@@ -51,6 +52,7 @@ export const useDragAndDrop = () => {
         });
       } else {
         // For tasks, update the task_date
+        const dateString = format(normalizedTargetDate, 'yyyy-MM-dd');
         await updateTask(draggedItem.id, {
           task_date: dateString,
         });

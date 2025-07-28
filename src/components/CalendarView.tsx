@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { CalendarDays, Clock, MapPin, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Filter } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO, isSameMonth, isAfter, isBefore, endOfDay, startOfDay } from 'date-fns';
 import { useInAppCalendar } from '@/hooks/useInAppCalendar';
 import { useTasks } from '@/hooks/useTasks';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
@@ -157,7 +157,34 @@ export const CalendarView = () => {
     });
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const isDateInCurrentMonth = (date: Date) => {
+    return isSameMonth(date, currentMonth);
+  };
+
+  const isValidDropTarget = (date: Date) => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    return !isBefore(date, monthStart) && !isAfter(date, monthEnd);
+  };
+
+  const clampDateToCurrentMonth = (date: Date) => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    
+    if (isBefore(date, monthStart)) {
+      return monthStart;
+    }
+    if (isAfter(date, monthEnd)) {
+      return monthEnd;
+    }
+    return date;
+  };
+
+  const handleDragOver = (e: React.DragEvent, date: Date) => {
+    if (!isValidDropTarget(date)) {
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
@@ -165,10 +192,15 @@ export const CalendarView = () => {
   const handleDropOnDate = async (date: Date, e: React.DragEvent) => {
     e.preventDefault();
     
-    if (!draggedItem) return;
+    if (!draggedItem || !isValidDropTarget(date)) {
+      endDrag();
+      return;
+    }
+
+    const clampedDate = clampDateToCurrentMonth(date);
 
     try {
-      await handleDrop(date, updateEvent, updateTask);
+      await handleDrop(clampedDate, updateEvent, updateTask);
       toast({
         title: 'Success',
         description: `${draggedItem.type === 'event' ? 'Event' : 'Task'} moved successfully`,
@@ -196,52 +228,58 @@ export const CalendarView = () => {
     while (day <= calendarEnd) {
       const dayEvents = showEvents ? getEventsForDate(day) : [];
       const dayTasks = showTasks ? getTasksForDate(day) : [];
-      const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
+      const isCurrentMonth = isDateInCurrentMonth(day);
       const isSelected = isSameDay(day, selectedDate);
       const isToday = isSameDay(day, new Date());
+      const isValidDrop = isValidDropTarget(day);
 
       days.push(
         <div
           key={day.toString()}
           className={`
-            min-h-[120px] border border-border p-2 cursor-pointer transition-colors
-            ${isCurrentMonth ? 'bg-background' : 'bg-muted/50'}
-            ${isSelected ? 'bg-primary/10' : ''}
-            ${isToday ? 'bg-accent' : ''}
-            ${isDragging ? 'border-dashed border-primary' : ''}
+            min-h-[120px] border border-border p-2 transition-colors
+            ${isCurrentMonth ? 'bg-background cursor-pointer' : 'bg-muted/30 cursor-not-allowed'}
+            ${isSelected && isCurrentMonth ? 'bg-primary/10' : ''}
+            ${isToday && isCurrentMonth ? 'bg-accent' : ''}
+            ${isDragging && isValidDrop ? 'border-dashed border-primary' : ''}
+            ${isDragging && !isValidDrop ? 'border-dashed border-destructive/50' : ''}
           `}
-          onClick={() => setSelectedDate(day)}
-          onDragOver={handleDragOver}
+          onClick={() => isCurrentMonth && setSelectedDate(day)}
+          onDragOver={(e) => handleDragOver(e, day)}
           onDrop={(e) => handleDropOnDate(day, e)}
         >
-          <div className={`text-sm font-medium mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <div className={`text-sm font-medium mb-1 ${
+            isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'
+          }`}>
             {format(day, 'd')}
           </div>
-          <div className="space-y-1">
-            {dayEvents.slice(0, 2).map((event) => (
-              <CalendarItem
-                key={event.id}
-                item={event}
-                type="event"
-                onClick={() => handleEditEvent(event)}
-                onDragStart={startDrag}
-              />
-            ))}
-            {dayTasks.slice(0, 2).map((task) => (
-              <CalendarItem
-                key={task.id}
-                item={task}
-                type="task"
-                onClick={() => {/* Task editing will be handled by existing task components */}}
-                onDragStart={startDrag}
-              />
-            ))}
-            {(dayEvents.length + dayTasks.length) > 2 && (
-              <div className="text-xs text-muted-foreground">
-                +{(dayEvents.length + dayTasks.length) - 2} more
-              </div>
-            )}
-          </div>
+          {isCurrentMonth && (
+            <div className="space-y-1">
+              {dayEvents.slice(0, 2).map((event) => (
+                <CalendarItem
+                  key={event.id}
+                  item={event}
+                  type="event"
+                  onClick={() => handleEditEvent(event)}
+                  onDragStart={startDrag}
+                />
+              ))}
+              {dayTasks.slice(0, 2).map((task) => (
+                <CalendarItem
+                  key={task.id}
+                  item={task}
+                  type="task"
+                  onClick={() => {/* Task editing will be handled by existing task components */}}
+                  onDragStart={startDrag}
+                />
+              ))}
+              {(dayEvents.length + dayTasks.length) > 2 && (
+                <div className="text-xs text-muted-foreground">
+                  +{(dayEvents.length + dayTasks.length) - 2} more
+                </div>
+              )}
+            </div>
+          )}
         </div>,
       );
       day = addDays(day, 1);
@@ -269,12 +307,17 @@ export const CalendarView = () => {
           const dayEvents = showEvents ? getEventsForDate(day) : [];
           const dayTasks = showTasks ? getTasksForDate(day) : [];
           const isToday = isSameDay(day, new Date());
+          const isValidDrop = isValidDropTarget(day);
 
           return (
             <div 
               key={day.toString()} 
-              className={`border border-border rounded-lg p-3 ${isDragging ? 'border-dashed border-primary' : ''}`}
-              onDragOver={handleDragOver}
+              className={`border border-border rounded-lg p-3 ${
+                isDragging && isValidDrop ? 'border-dashed border-primary' : ''
+              } ${
+                isDragging && !isValidDrop ? 'border-dashed border-destructive/50' : ''
+              }`}
+              onDragOver={(e) => handleDragOver(e, day)}
               onDrop={(e) => handleDropOnDate(day, e)}
             >
               <div className={`text-sm font-medium mb-2 ${isToday ? 'text-primary' : 'text-foreground'}`}>
