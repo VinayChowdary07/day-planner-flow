@@ -30,6 +30,29 @@ interface EventFormData {
   color?: string;
 }
 
+// Type guard to ensure recurrence_type is valid
+const isValidRecurrenceType = (type: string): type is 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' => {
+  return ['none', 'daily', 'weekly', 'monthly', 'yearly'].includes(type);
+};
+
+// Function to transform raw data to CalendarEvent
+const transformToCalendarEvent = (rawEvent: any): CalendarEvent => {
+  return {
+    id: rawEvent.id,
+    title: rawEvent.title,
+    description: rawEvent.description,
+    start_datetime: rawEvent.start_datetime,
+    end_datetime: rawEvent.end_datetime,
+    location: rawEvent.location,
+    is_all_day: rawEvent.is_all_day,
+    recurrence_type: isValidRecurrenceType(rawEvent.recurrence_type) ? rawEvent.recurrence_type : 'none',
+    recurrence_end_date: rawEvent.recurrence_end_date,
+    color: rawEvent.color,
+    created_at: rawEvent.created_at,
+    updated_at: rawEvent.updated_at,
+  };
+};
+
 export const useInAppCalendar = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,8 +70,9 @@ export const useInAppCalendar = () => {
 
       if (error) throw error;
 
-      setEvents(data || []);
-      return data || [];
+      const transformedEvents = (data || []).map(transformToCalendarEvent);
+      setEvents(transformedEvents);
+      return transformedEvents;
     } catch (error) {
       console.error('Error fetching events:', error);
       toast({
@@ -91,7 +115,7 @@ export const useInAppCalendar = () => {
         description: 'Event created successfully',
       });
 
-      return data;
+      return transformToCalendarEvent(data);
     } catch (error) {
       console.error('Error creating event:', error);
       toast({
@@ -122,7 +146,7 @@ export const useInAppCalendar = () => {
         description: 'Event updated successfully',
       });
 
-      return data;
+      return transformToCalendarEvent(data);
     } catch (error) {
       console.error('Error updating event:', error);
       toast({
