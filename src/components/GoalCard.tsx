@@ -110,7 +110,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
 
   if (loading) {
     return (
-      <Card className="h-64 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+      <Card className="h-80 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
         <CardContent className="p-6 h-full flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
         </CardContent>
@@ -119,21 +119,14 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   }
 
   return (
-    <Card className={`relative bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 border-t-4 ${getCardBorderColor()} hover:shadow-xl transition-all duration-300 group`}>
-      {/* Trophy icon for completed goals */}
-      {isCompleted && (
-        <div className="absolute top-4 right-4 z-10">
-          <Trophy className="h-6 w-6 text-yellow-500" />
-        </div>
-      )}
-
+    <Card className={`relative bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 border-t-4 ${getCardBorderColor()} hover:shadow-xl transition-all duration-300 group h-80`}>
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
+          <div className="flex-1 pr-2">
             <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-xl font-bold text-white">{goal.title}</CardTitle>
+              <CardTitle className="text-xl font-bold text-white line-clamp-1">{goal.title}</CardTitle>
               {isCompleted && (
-                <Badge className="bg-green-600 text-white text-xs px-2 py-1">
+                <Badge className="bg-green-600 text-white text-xs px-2 py-1 whitespace-nowrap">
                   completed
                 </Badge>
               )}
@@ -144,14 +137,24 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
               <span>Personal</span>
             </div>
 
-            {goal.description && (
-              <p className="text-slate-300 text-sm mb-4 line-clamp-2">
-                {goal.description}
-              </p>
-            )}
+            {/* Description with fixed height */}
+            <div className="h-10 mb-4">
+              {goal.description && (
+                <p className="text-slate-300 text-sm line-clamp-2">
+                  {goal.description}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Action buttons with proper spacing */}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+            {/* Trophy for completed goals - positioned to not overlap */}
+            {isCompleted && (
+              <div className="p-1">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+              </div>
+            )}
             {onEdit && (
               <Button
                 variant="ghost"
@@ -176,9 +179,9 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 flex-1 flex flex-col">
         {/* Progress Section */}
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-300 text-sm font-medium">Progress</span>
             <span className="text-white text-lg font-bold">{progressPercentage}%</span>
@@ -204,31 +207,37 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           </div>
         </div>
 
-        {/* Tags */}
-        {goal.description && (
-          <div className="flex flex-wrap gap-1 mb-4">
-            {goal.description.split(' ').slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs bg-slate-800 text-slate-300 border-slate-600">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
+        {/* Tags section - reserved space for future use */}
+        <div className="mb-4 min-h-[24px]">
+          {goal.description && (
+            <div className="flex flex-wrap gap-1">
+              {goal.description.split(' ').slice(0, 3).map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs bg-slate-800 text-slate-300 border-slate-600">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Dates */}
-        <div className="space-y-2 text-xs text-slate-400">
-          {goal.start_date && (
-            <div className="flex items-center gap-2">
-              <Calendar className="h-3 w-3" />
-              <span>Started: {formatDate(goal.start_date)}</span>
-            </div>
-          )}
-          {goal.end_date && (
-            <div className="flex items-center gap-2">
-              <Target className="h-3 w-3" />
-              <span>Target: {formatDate(goal.end_date)}</span>
-            </div>
-          )}
+        {/* Dates section at bottom */}
+        <div className="mt-auto space-y-2 text-xs text-slate-400">
+          <div className="min-h-[16px]">
+            {goal.start_date && (
+              <div className="flex items-center gap-2">
+                <Calendar className="h-3 w-3" />
+                <span>Started: {formatDate(goal.start_date)}</span>
+              </div>
+            )}
+          </div>
+          <div className="min-h-[16px]">
+            {goal.end_date && (
+              <div className="flex items-center gap-2">
+                <Target className="h-3 w-3" />
+                <span>Target: {formatDate(goal.end_date)}</span>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
