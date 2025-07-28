@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect } from 'react';
-import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,196 +7,130 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarDays, Clock, MapPin, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CalendarDays, Clock, MapPin, Plus, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
+import { useInAppCalendar } from '@/hooks/useInAppCalendar';
 
 interface CalendarEvent {
   id: string;
   title: string;
   description?: string;
-  start: string;
-  end: string;
+  start_datetime: string;
+  end_datetime: string;
   location?: string;
-  source: 'outlook' | 'task';
-  isAllDay?: boolean;
+  is_all_day: boolean;
+  recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  recurrence_end_date?: string;
+  color?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface EventFormData {
   title: string;
   description: string;
-  start: string;
-  end: string;
+  start_datetime: string;
+  end_datetime: string;
   location: string;
+  is_all_day: boolean;
+  recurrence_type: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  color: string;
 }
 
 export const CalendarView = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'month' | 'week'>('month');
   const [showEventDialog, setShowEventDialog] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [eventForm, setEventForm] = useState<EventFormData>({
     title: '',
     description: '',
-    start: '',
-    end: '',
+    start_datetime: '',
+    end_datetime: '',
     location: '',
+    is_all_day: false,
+    recurrence_type: 'none',
+    color: '#3B82F6',
   });
-  const [isConnectedToOutlook, setIsConnectedToOutlook] = useState(false);
-  const { toast } = useToast();
+
+  const { events, loading, fetchEvents, createEvent, updateEvent, deleteEvent } = useInAppCalendar();
 
   useEffect(() => {
-    fetchEvents();
-    checkOutlookConnection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadEvents();
   }, [currentMonth]);
 
-const fetchEvents = async () => {
-  setLoading(true);
-  try {
+  const loadEvents = async () => {
     const startDate = startOfMonth(currentMonth);
     const endDate = endOfMonth(currentMonth);
+    await fetchEvents(startDate.toISOString(), endDate.toISOString());
+  };
 
-    const { data, error } = await supabase.functions.invoke('outlook-calendar', {
-      body: {
-        action: 'events',
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-      },
-    });
-
-    if (error) {
-      console.error('Supabase function error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch calendar events (API error)',
-        variant: 'destructive',
-      });
-      setEvents([]);
+  const handleCreateEvent = async () => {
+    if (!eventForm.title || !eventForm.start_datetime || !eventForm.end_datetime) {
       return;
     }
 
-    if (data && typeof data === 'object' && 'events' in data && Array.isArray(data.events)) {
-      setEvents(data.events);
-    } else {
-      console.warn('Unexpected or empty data received:', data);
-      setEvents([]);
-      toast({
-        title: 'Warning',
-        description: 'No calendar events found for the selected range.',
-        variant: 'default',
-      });
-    }
-  } catch (err) {
-    console.error('Exception while fetching events:', err);
-    toast({
-      title: 'Error',
-      description: 'Failed to fetch calendar events due to network or server error.',
-      variant: 'destructive',
-    });
-    setEvents([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const checkOutlookConnection = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('user_calendar_settings' as any)
-        .select('outlook_access_token')
-        .eq('user_id', user.id)
-        .single();
-
-      // Allow "no rows found" error code PGRST116 silently (means no data yet)
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking Outlook connection:', error);
-        return;
-      }
-
-      // Null check & type safety for access token retrieval
-      if (data !== null && typeof data === 'object' && 'outlook_access_token' in data) {
-        const settingsData = data as Record<string, any>;
-        const accessToken = settingsData['outlook_access_token'];
-        setIsConnectedToOutlook(!!accessToken);
+      if (editingEvent) {
+        await updateEvent(editingEvent.id, eventForm);
       } else {
-        setIsConnectedToOutlook(false);
+        await createEvent(eventForm);
       }
-    } catch (error) {
-      console.error('Error checking Outlook connection:', error);
-      setIsConnectedToOutlook(false);
-    }
-  };
-
-  const connectToOutlook = () => {
-    const clientId = 'your-outlook-client-id'; // Replace with your environment variable or config
-    const redirectUri = `${window.location.origin}/auth/outlook/callback`;
-    const scope = 'https://graph.microsoft.com/calendars.readwrite offline_access';
-
-    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(
-      redirectUri,
-    )}&scope=${encodeURIComponent(scope)}`;
-
-    window.location.href = authUrl;
-  };
-
-  const createEvent = async () => {
-    if (!eventForm.title || !eventForm.start || !eventForm.end) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('outlook-calendar', {
-        body: {
-          action: 'create-event',
-          ...eventForm,
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Event created successfully',
-      });
 
       setShowEventDialog(false);
-      setEventForm({
-        title: '',
-        description: '',
-        start: '',
-        end: '',
-        location: '',
-      });
-
-      fetchEvents();
+      setEditingEvent(null);
+      resetForm();
+      loadEvents();
     } catch (error) {
-      console.error('Error creating event:', error);
-
-      toast({
-        title: 'Error',
-        description: 'Failed to create event',
-        variant: 'destructive',
-      });
+      console.error('Error saving event:', error);
     }
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setEventForm({
+      title: event.title,
+      description: event.description || '',
+      start_datetime: event.start_datetime.slice(0, 16),
+      end_datetime: event.end_datetime.slice(0, 16),
+      location: event.location || '',
+      is_all_day: event.is_all_day,
+      recurrence_type: event.recurrence_type || 'none',
+      color: event.color || '#3B82F6',
+    });
+    setShowEventDialog(true);
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (confirm('Are you sure you want to delete this event?')) {
+      try {
+        await deleteEvent(eventId);
+        loadEvents();
+      } catch (error) {
+        console.error('Error deleting event:', error);
+      }
+    }
+  };
+
+  const resetForm = () => {
+    setEventForm({
+      title: '',
+      description: '',
+      start_datetime: '',
+      end_datetime: '',
+      location: '',
+      is_all_day: false,
+      recurrence_type: 'none',
+      color: '#3B82F6',
+    });
   };
 
   const getEventsForDate = (date: Date) => {
     return events.filter((event) => {
-      const eventDate = parseISO(event.start);
+      const eventDate = parseISO(event.start_datetime);
       return isSameDay(eventDate, date);
     });
   };
@@ -234,10 +168,8 @@ const fetchEvents = async () => {
             {dayEvents.slice(0, 3).map((event) => (
               <div
                 key={event.id}
-                className={`
-                  text-xs p-1 rounded truncate
-                  ${event.source === 'outlook' ? 'bg-blue-100 text-blue-900' : 'bg-green-100 text-green-900'}
-                `}
+                className="text-xs p-1 rounded truncate"
+                style={{ backgroundColor: event.color + '20', color: event.color }}
               >
                 {event.title}
               </div>
@@ -282,16 +214,15 @@ const fetchEvents = async () => {
                 {dayEvents.map((event) => (
                   <div
                     key={event.id}
-                    className={`
-                      text-xs p-2 rounded
-                      ${event.source === 'outlook' ? 'bg-blue-100 text-blue-900' : 'bg-green-100 text-green-900'}
-                    `}
+                    className="text-xs p-2 rounded cursor-pointer hover:opacity-80"
+                    style={{ backgroundColor: event.color + '20', color: event.color }}
+                    onClick={() => handleEditEvent(event)}
                   >
                     <div className="font-medium">{event.title}</div>
-                    {event.start && (
+                    {!event.is_all_day && (
                       <div className="flex items-center gap-1 mt-1">
                         <Clock className="h-3 w-3" />
-                        {format(parseISO(event.start), 'HH:mm')}
+                        {format(parseISO(event.start_datetime), 'HH:mm')}
                       </div>
                     )}
                     {event.location && (
@@ -342,82 +273,121 @@ const fetchEvents = async () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {!isConnectedToOutlook && (
-            <Button onClick={connectToOutlook} variant="outline" size="sm">
-              Connect Outlook
+        <Dialog open={showEventDialog} onOpenChange={(open) => {
+          setShowEventDialog(open);
+          if (!open) {
+            setEditingEvent(null);
+            resetForm();
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Event
             </Button>
-          )}
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Event title"
+                />
+              </div>
 
-          <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Event
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Event</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={eventForm.description}
+                  onChange={(e) => setEventForm((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Event description"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_all_day"
+                  checked={eventForm.is_all_day}
+                  onCheckedChange={(checked) => setEventForm((prev) => ({ ...prev, is_all_day: checked as boolean }))}
+                />
+                <Label htmlFor="is_all_day">All day event</Label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="title">Title *</Label>
+                  <Label htmlFor="start">Start *</Label>
                   <Input
-                    id="title"
-                    value={eventForm.title}
-                    onChange={(e) => setEventForm((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="Event title"
+                    id="start"
+                    type={eventForm.is_all_day ? 'date' : 'datetime-local'}
+                    value={eventForm.start_datetime}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, start_datetime: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={eventForm.description}
-                    onChange={(e) => setEventForm((prev) => ({ ...prev, description: e.target.value }))}
-                    placeholder="Event description"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="start">Start *</Label>
-                    <Input
-                      id="start"
-                      type="datetime-local"
-                      value={eventForm.start}
-                      onChange={(e) => setEventForm((prev) => ({ ...prev, start: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="end">End *</Label>
-                    <Input
-                      id="end"
-                      type="datetime-local"
-                      value={eventForm.end}
-                      onChange={(e) => setEventForm((prev) => ({ ...prev, end: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="end">End *</Label>
                   <Input
-                    id="location"
-                    value={eventForm.location}
-                    onChange={(e) => setEventForm((prev) => ({ ...prev, location: e.target.value }))}
-                    placeholder="Event location"
+                    id="end"
+                    type={eventForm.is_all_day ? 'date' : 'datetime-local'}
+                    value={eventForm.end_datetime}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, end_datetime: e.target.value }))}
                   />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowEventDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={createEvent}>Create Event</Button>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+
+              <div>
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={eventForm.location}
+                  onChange={(e) => setEventForm((prev) => ({ ...prev, location: e.target.value }))}
+                  placeholder="Event location"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="recurrence">Recurrence</Label>
+                <Select value={eventForm.recurrence_type} onValueChange={(value) => setEventForm((prev) => ({ ...prev, recurrence_type: value as any }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select recurrence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No recurrence</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="color">Color</Label>
+                <Input
+                  id="color"
+                  type="color"
+                  value={eventForm.color}
+                  onChange={(e) => setEventForm((prev) => ({ ...prev, color: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowEventDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateEvent}>
+                  {editingEvent ? 'Update Event' : 'Create Event'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Calendar Navigation */}
@@ -462,17 +432,18 @@ const fetchEvents = async () => {
             <div className="space-y-3">
               {getEventsForDate(selectedDate).map((event) => (
                 <div key={event.id} className="flex items-start gap-3 p-3 border border-border rounded-lg">
-                  <Badge variant={event.source === 'outlook' ? 'default' : 'secondary'}>
-                    {event.source === 'outlook' ? 'Outlook' : 'Task'}
-                  </Badge>
+                  <div
+                    className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                    style={{ backgroundColor: event.color }}
+                  />
                   <div className="flex-1">
                     <h4 className="font-medium">{event.title}</h4>
                     {event.description && <p className="text-sm text-muted-foreground mt-1">{event.description}</p>}
                     <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                      {event.start && (
+                      {!event.is_all_day && (
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {format(parseISO(event.start), 'HH:mm')} - {format(parseISO(event.end), 'HH:mm')}
+                          {format(parseISO(event.start_datetime), 'HH:mm')} - {format(parseISO(event.end_datetime), 'HH:mm')}
                         </div>
                       )}
                       {event.location && (
@@ -482,6 +453,22 @@ const fetchEvents = async () => {
                         </div>
                       )}
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditEvent(event)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteEvent(event.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}

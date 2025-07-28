@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_events: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          end_datetime: string
+          id: string
+          is_all_day: boolean
+          location: string | null
+          recurrence_end_date: string | null
+          recurrence_type: string | null
+          start_datetime: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_datetime: string
+          id?: string
+          is_all_day?: boolean
+          location?: string | null
+          recurrence_end_date?: string | null
+          recurrence_type?: string | null
+          start_datetime: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_datetime?: string
+          id?: string
+          is_all_day?: boolean
+          location?: string | null
+          recurrence_end_date?: string | null
+          recurrence_type?: string | null
+          start_datetime?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       goal_tasks: {
         Row: {
           created_at: string
@@ -280,42 +328,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_calendar_settings: {
-        Row: {
-          created_at: string
-          default_calendar_view: string
-          id: string
-          outlook_access_token: string | null
-          outlook_refresh_token: string | null
-          outlook_token_expires_at: string | null
-          sync_enabled: boolean
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          default_calendar_view?: string
-          id?: string
-          outlook_access_token?: string | null
-          outlook_refresh_token?: string | null
-          outlook_token_expires_at?: string | null
-          sync_enabled?: boolean
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          default_calendar_view?: string
-          id?: string
-          outlook_access_token?: string | null
-          outlook_refresh_token?: string | null
-          outlook_token_expires_at?: string | null
-          sync_enabled?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
     }
     Views: {
