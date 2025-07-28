@@ -53,6 +53,7 @@ export const useCalendar = () => {
         return;
       }
 
+      // Fixed null check - ensure data exists before accessing properties
       if (data && typeof data === 'object' && !('error' in data)) {
         setSettings(data as CalendarSettings);
         const settingsData = data as Record<string, any>;

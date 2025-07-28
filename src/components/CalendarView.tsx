@@ -70,11 +70,11 @@ export const CalendarView = () => {
 
       if (error) throw error;
 
-      // Null and type safe check before accessing data.events
-      if (data && typeof data === 'object' && 'events' in data && Array.isArray((data as any).events)) {
-        setEvents((data as any).events as CalendarEvent[]);
+      // Fixed null check - ensure data exists before accessing events property
+      if (data && typeof data === 'object' && 'events' in data && Array.isArray(data.events)) {
+        setEvents(data.events as CalendarEvent[]);
       } else {
-        setEvents([]); // fallback to empty array if no events
+        setEvents([]);
       }
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -83,7 +83,7 @@ export const CalendarView = () => {
         description: 'Failed to fetch calendar events',
         variant: 'destructive',
       });
-      setEvents([]); // clear events on failure
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -108,7 +108,7 @@ export const CalendarView = () => {
         return;
       }
 
-      // Null-safe check and setting connection flag
+      // Fixed null check - ensure data exists before accessing properties
       if (data && typeof data === 'object' && 'outlook_access_token' in data) {
         const accessToken = (data as Record<string, any>)['outlook_access_token'];
         setIsConnectedToOutlook(!!accessToken);
