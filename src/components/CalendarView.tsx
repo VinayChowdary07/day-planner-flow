@@ -99,12 +99,10 @@ export const CalendarView = () => {
         return;
       }
 
-      if (data && typeof data === 'object' && !('error' in data)) {
-        if (data !== null) {
-          const settingsData = data as any;
-          const accessToken = settingsData['outlook_access_token'];
-          setIsConnectedToOutlook(!!accessToken);
-        }
+      if (data && typeof data === 'object' && !('error' in data) && data !== null) {
+        const settingsData = data as any;
+        const accessToken = settingsData['outlook_access_token'];
+        setIsConnectedToOutlook(!!accessToken);
       }
     } catch (error) {
       console.error('Error checking Outlook connection:', error);

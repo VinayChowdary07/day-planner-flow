@@ -53,13 +53,11 @@ export const useCalendar = () => {
         return;
       }
 
-      if (data && typeof data === 'object' && !('error' in data)) {
+      if (data && typeof data === 'object' && !('error' in data) && data !== null) {
         setSettings(data as CalendarSettings);
-        if (data !== null) {
-          const settingsData = data as any;
-          const accessToken = settingsData['outlook_access_token'];
-          setIsConnectedToOutlook(!!accessToken);
-        }
+        const settingsData = data as any;
+        const accessToken = settingsData['outlook_access_token'];
+        setIsConnectedToOutlook(!!accessToken);
       }
     } catch (error) {
       console.error('Error fetching calendar settings:', error);
