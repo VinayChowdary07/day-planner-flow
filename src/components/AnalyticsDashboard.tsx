@@ -14,7 +14,8 @@ import {
   FolderOpen, 
   TrendingUp, 
   Calendar,
-  Award
+  Award,
+  BarChart3
 } from 'lucide-react';
 
 export const AnalyticsDashboard = () => {
@@ -22,10 +23,11 @@ export const AnalyticsDashboard = () => {
   const { projects, loading: projectsLoading } = useProjects();
   const { goals, loading: goalsLoading } = useGoals();
 
-  // Calculate real-time statistics
+  // Calculate real-time statistics with proper error handling
   const tasksCompletedToday = tasks?.filter(task => {
+    if (!task.updated_at) return false;
     const today = new Date().toDateString();
-    return task.status === 'complete' && task.updated_at && 
+    return task.status === 'complete' && 
            new Date(task.updated_at).toDateString() === today;
   }).length || 0;
 
@@ -38,19 +40,38 @@ export const AnalyticsDashboard = () => {
   }).length || 0;
   
   const goalsAchievedThisWeek = goals?.filter(goal => {
-    // For now, we'll consider goals with recent updates as achieved
-    // In a real scenario, you'd have a completion status
+    if (!goal.updated_at) return false;
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
-    return goal.updated_at && new Date(goal.updated_at) >= weekAgo;
+    const updatedDate = new Date(goal.updated_at);
+    
+    // Consider goals with end_date in the past week as achieved this week
+    if (goal.end_date) {
+      const endDate = new Date(goal.end_date);
+      return endDate >= weekAgo && endDate <= new Date() && updatedDate >= weekAgo;
+    }
+    
+    // Fallback: consider recently updated goals as potentially achieved
+    return updatedDate >= weekAgo;
   }).length || 0;
 
+  // Total counts - these should include ALL items regardless of status
+  const totalTasks = tasks?.length || 0;
+  const totalProjects = projects?.length || 0;
+  const totalGoals = goals?.length || 0;
+
+  // Completed counts
   const totalTasksCompleted = tasks?.filter(task => task.status === 'complete').length || 0;
   const totalProjectsCompleted = projects?.filter(project => project.status === 'completed').length || 0;
   const totalGoalsAchieved = goals?.filter(goal => {
     // Consider goals with end_date in the past as achieved
     return goal.end_date && new Date(goal.end_date) < new Date();
   }).length || 0;
+
+  // Completion rates
+  const taskCompletionRate = totalTasks > 0 ? Math.round((totalTasksCompleted / totalTasks) * 100) : 0;
+  const projectCompletionRate = totalProjects > 0 ? Math.round((totalProjectsCompleted / totalProjects) * 100) : 0;
+  const goalAchievementRate = totalGoals > 0 ? Math.round((totalGoalsAchieved / totalGoals) * 100) : 0;
 
   const isLoading = tasksLoading || projectsLoading || goalsLoading;
 
@@ -67,8 +88,8 @@ export const AnalyticsDashboard = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">Real-time productivity insights and statistics</p>
+          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+          <p className="text-muted-foreground">Real-time productivity insights and comprehensive statistics</p>
         </div>
         <Badge variant="outline" className="text-xs">
           <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
@@ -147,44 +168,47 @@ export const AnalyticsDashboard = () => {
         </Card>
       </div>
 
-      {/* Secondary Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Total and Completion Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tasks Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalTasksCompleted}</div>
-            <p className="text-xs text-muted-foreground">
-              Lifetime completions
-            </p>
+            <div className="text-2xl font-bold">{totalTasks}</div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle className="h-3 w-3 text-green-600" />
+              <span>{totalTasksCompleted} completed ({taskCompletionRate}%)</span>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projects Completed</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProjectsCompleted}</div>
-            <p className="text-xs text-muted-foreground">
-              Successfully finished
-            </p>
+            <div className="text-2xl font-bold">{totalProjects}</div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle className="h-3 w-3 text-blue-600" />
+              <span>{totalProjectsCompleted} completed ({projectCompletionRate}%)</span>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Goals Achieved</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Goals</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalGoalsAchieved}</div>
-            <p className="text-xs text-muted-foreground">
-              Milestones reached
-            </p>
+            <div className="text-2xl font-bold">{totalGoals}</div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Award className="h-3 w-3 text-purple-600" />
+              <span>{totalGoalsAchieved} achieved ({goalAchievementRate}%)</span>
+            </div>
           </CardContent>
         </Card>
       </div>
