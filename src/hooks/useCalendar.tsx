@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -53,9 +54,9 @@ export const useCalendar = () => {
         return;
       }
 
-      if (data && typeof data === 'object' && !('error' in data) && data !== null) {
+      if (data !== null && typeof data === 'object' && !('error' in data)) {
         setSettings(data as CalendarSettings);
-        const settingsData = data as any;
+        const settingsData = data as Record<string, any>;
         const accessToken = settingsData['outlook_access_token'];
         setIsConnectedToOutlook(!!accessToken);
       }
