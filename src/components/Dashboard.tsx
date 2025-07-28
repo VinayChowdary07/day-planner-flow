@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { DashboardGrid } from '@/components/DashboardGrid';
+import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { TasksDashboard } from '@/components/TasksDashboard';
 import { ProjectsDashboard } from '@/components/ProjectsDashboard';
 import { GoalsDashboard } from '@/components/GoalsDashboard';
@@ -19,7 +19,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <DashboardGrid />;
+        return <AnalyticsDashboard />;
       case 'tasks':
         return <TasksDashboard />;
       case 'projects':
@@ -29,7 +29,7 @@ const Dashboard = () => {
       case 'calendar':
         return <CalendarView />;
       default:
-        return <DashboardGrid />;
+        return <AnalyticsDashboard />;
     }
   };
 
