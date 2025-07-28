@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { CalendarDays, Clock, MapPin, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Filter } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO, isSameMonth, isAfter, isBefore, endOfDay, startOfDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO, isSameMonth, isAfter, isBefore } from 'date-fns';
 import { useInAppCalendar } from '@/hooks/useInAppCalendar';
 import { useTasks } from '@/hooks/useTasks';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
@@ -162,9 +161,7 @@ export const CalendarView = () => {
   };
 
   const isValidDropTarget = (date: Date) => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    return !isBefore(date, monthStart) && !isAfter(date, monthEnd);
+    return isDateInCurrentMonth(date);
   };
 
   const clampDateToCurrentMonth = (date: Date) => {
@@ -191,6 +188,7 @@ export const CalendarView = () => {
 
   const handleDropOnDate = async (date: Date, e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (!draggedItem || !isValidDropTarget(date)) {
       endDrag();
@@ -216,6 +214,12 @@ export const CalendarView = () => {
     }
   };
 
+  const handleDateClick = (date: Date) => {
+    if (isDateInCurrentMonth(date)) {
+      setSelectedDate(date);
+    }
+  };
+
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -237,20 +241,23 @@ export const CalendarView = () => {
         <div
           key={day.toString()}
           className={`
-            min-h-[120px] border border-border p-2 transition-colors
-            ${isCurrentMonth ? 'bg-background cursor-pointer' : 'bg-muted/30 cursor-not-allowed'}
-            ${isSelected && isCurrentMonth ? 'bg-primary/10' : ''}
-            ${isToday && isCurrentMonth ? 'bg-accent' : ''}
-            ${isDragging && isValidDrop ? 'border-dashed border-primary' : ''}
-            ${isDragging && !isValidDrop ? 'border-dashed border-destructive/50' : ''}
+            min-h-[120px] border border-border p-2 transition-all duration-200
+            ${isCurrentMonth 
+              ? 'bg-background hover:bg-accent/50 cursor-pointer' 
+              : 'bg-muted/20 cursor-default opacity-30'
+            }
+            ${isSelected && isCurrentMonth ? 'bg-primary/10 border-primary' : ''}
+            ${isToday && isCurrentMonth ? 'ring-2 ring-primary ring-offset-2' : ''}
+            ${isDragging && isValidDrop ? 'border-2 border-dashed border-primary bg-primary/5' : ''}
+            ${isDragging && !isValidDrop ? 'border-2 border-dashed border-destructive/50 bg-destructive/5' : ''}
           `}
-          onClick={() => isCurrentMonth && setSelectedDate(day)}
-          onDragOver={(e) => handleDragOver(e, day)}
-          onDrop={(e) => handleDropOnDate(day, e)}
+          onClick={() => handleDateClick(day)}
+          onDragOver={(e) => isCurrentMonth && handleDragOver(e, day)}
+          onDrop={(e) => isCurrentMonth && handleDropOnDate(day, e)}
         >
           <div className={`text-sm font-medium mb-1 ${
-            isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/50'
-          }`}>
+            isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'
+          } ${isToday && isCurrentMonth ? 'text-primary font-bold' : ''}`}>
             {format(day, 'd')}
           </div>
           {isCurrentMonth && (
@@ -274,7 +281,7 @@ export const CalendarView = () => {
                 />
               ))}
               {(dayEvents.length + dayTasks.length) > 2 && (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground bg-muted/50 rounded px-1 py-0.5">
                   +{(dayEvents.length + dayTasks.length) - 2} more
                 </div>
               )}
@@ -286,9 +293,9 @@ export const CalendarView = () => {
     }
 
     return (
-      <div className="grid grid-cols-7 gap-0">
+      <div className="grid grid-cols-7 gap-0 border border-border rounded-lg overflow-hidden">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-          <div key={day} className="p-3 text-center font-medium bg-muted">
+          <div key={day} className="p-3 text-center font-medium bg-muted/50 border-b border-border">
             {day}
           </div>
         ))}
@@ -312,15 +319,17 @@ export const CalendarView = () => {
           return (
             <div 
               key={day.toString()} 
-              className={`border border-border rounded-lg p-3 ${
-                isDragging && isValidDrop ? 'border-dashed border-primary' : ''
+              className={`border border-border rounded-lg p-3 min-h-[200px] ${
+                isDragging && isValidDrop ? 'border-2 border-dashed border-primary bg-primary/5' : ''
               } ${
-                isDragging && !isValidDrop ? 'border-dashed border-destructive/50' : ''
+                isDragging && !isValidDrop ? 'border-2 border-dashed border-destructive/50 bg-destructive/5' : ''
               }`}
               onDragOver={(e) => handleDragOver(e, day)}
               onDrop={(e) => handleDropOnDate(day, e)}
             >
-              <div className={`text-sm font-medium mb-2 ${isToday ? 'text-primary' : 'text-foreground'}`}>
+              <div className={`text-sm font-medium mb-2 ${
+                isToday ? 'text-primary font-bold' : 'text-foreground'
+              }`}>
                 {format(day, 'EEE d')}
               </div>
               <div className="space-y-2">
@@ -354,6 +363,10 @@ export const CalendarView = () => {
     const newMonth = new Date(currentMonth);
     newMonth.setMonth(currentMonth.getMonth() + (direction === 'next' ? 1 : -1));
     setCurrentMonth(newMonth);
+    // Reset selected date to first day of new month if it's outside the new month
+    if (!isSameMonth(selectedDate, newMonth)) {
+      setSelectedDate(startOfMonth(newMonth));
+    }
   };
 
   const selectedDateEvents = showEvents ? getEventsForDate(selectedDate) : [];

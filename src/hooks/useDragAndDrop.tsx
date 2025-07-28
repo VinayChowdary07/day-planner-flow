@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, startOfDay } from 'date-fns';
 
 interface DragItem {
   id: string;
@@ -14,12 +14,14 @@ export const useDragAndDrop = () => {
   const [isDragging, setIsDragging] = useState(false);
 
   const startDrag = useCallback((id: string, type: 'event' | 'task', data: any) => {
+    console.log('Starting drag:', { id, type, data });
     const originalDate = type === 'event' ? data.start_datetime : data.task_date;
     setDraggedItem({ id, type, originalDate, data });
     setIsDragging(true);
   }, []);
 
   const endDrag = useCallback(() => {
+    console.log('Ending drag');
     setDraggedItem(null);
     setIsDragging(false);
   }, []);
@@ -29,7 +31,12 @@ export const useDragAndDrop = () => {
     updateEvent: (id: string, updates: any) => Promise<any>,
     updateTask: (id: string, updates: any) => Promise<any>
   ) => {
-    if (!draggedItem) return;
+    if (!draggedItem) {
+      console.log('No dragged item found');
+      return;
+    }
+
+    console.log('Handling drop:', { draggedItem, targetDate });
 
     try {
       // Ensure the target date is properly normalized to start of day
@@ -46,6 +53,13 @@ export const useDragAndDrop = () => {
         
         const newEnd = new Date(newStart.getTime() + duration);
         
+        console.log('Updating event:', {
+          id: draggedItem.id,
+          oldStart: draggedItem.data.start_datetime,
+          newStart: newStart.toISOString(),
+          newEnd: newEnd.toISOString()
+        });
+        
         await updateEvent(draggedItem.id, {
           start_datetime: newStart.toISOString(),
           end_datetime: newEnd.toISOString(),
@@ -53,6 +67,13 @@ export const useDragAndDrop = () => {
       } else {
         // For tasks, update the task_date
         const dateString = format(normalizedTargetDate, 'yyyy-MM-dd');
+        
+        console.log('Updating task:', {
+          id: draggedItem.id,
+          oldDate: draggedItem.data.task_date,
+          newDate: dateString
+        });
+        
         await updateTask(draggedItem.id, {
           task_date: dateString,
         });

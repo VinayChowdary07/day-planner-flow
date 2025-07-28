@@ -21,7 +21,13 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
 }) => {
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ''); // For Firefox compatibility
     onDragStart(item.id, type, item);
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick();
   };
 
   const getItemStyle = () => {
@@ -45,9 +51,9 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
     <div
       draggable
       onDragStart={handleDragStart}
-      onClick={onClick}
+      onClick={handleClick}
       className={cn(
-        'text-xs p-2 rounded border-l-2 cursor-move hover:opacity-80 transition-opacity',
+        'text-xs p-1.5 rounded border-l-2 cursor-grab active:cursor-grabbing hover:opacity-80 transition-all duration-200 select-none',
         type === 'task' && 'border-dashed',
         className
       )}
