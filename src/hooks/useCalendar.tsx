@@ -55,7 +55,8 @@ export const useCalendar = () => {
 
       if (data && typeof data === 'object' && !('error' in data) && data !== null) {
         setSettings(data as CalendarSettings);
-        setIsConnectedToOutlook(!!(data as any).outlook_access_token);
+        const accessToken = (data as any).outlook_access_token;
+        setIsConnectedToOutlook(!!accessToken);
       }
     } catch (error) {
       console.error('Error fetching calendar settings:', error);
