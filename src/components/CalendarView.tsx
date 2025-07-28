@@ -70,9 +70,14 @@ export const CalendarView = () => {
 
       if (error) throw error;
 
-      // Fixed null check - ensure data exists before accessing events property
-      if (data && typeof data === 'object' && 'events' in data && Array.isArray(data.events)) {
-        setEvents(data.events as CalendarEvent[]);
+      // Null check and type safety before accessing events
+      if (
+        data !== null &&
+        typeof data === 'object' &&
+        'events' in data &&
+        Array.isArray((data as any).events)
+      ) {
+        setEvents((data as any).events as CalendarEvent[]);
       } else {
         setEvents([]);
       }
@@ -108,8 +113,8 @@ export const CalendarView = () => {
         return;
       }
 
-      // Fixed null check - ensure data exists before accessing properties
-      if (data && typeof data === 'object' && 'outlook_access_token' in data) {
+      // Null check & type safety for access token retrieval
+      if (data !== null && typeof data === 'object' && 'outlook_access_token' in data) {
         const settingsData = data as Record<string, any>;
         const accessToken = settingsData['outlook_access_token'];
         setIsConnectedToOutlook(!!accessToken);
@@ -171,6 +176,7 @@ export const CalendarView = () => {
       fetchEvents();
     } catch (error) {
       console.error('Error creating event:', error);
+
       toast({
         title: 'Error',
         description: 'Failed to create event',
