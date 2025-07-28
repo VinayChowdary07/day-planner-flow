@@ -58,7 +58,7 @@ export const CalendarView = () => {
     try {
       const startDate = startOfMonth(currentMonth);
       const endDate = endOfMonth(currentMonth);
-      
+
       const { data, error } = await supabase.functions.invoke('outlook-calendar', {
         body: {
           action: 'events',
@@ -99,13 +99,22 @@ export const CalendarView = () => {
         return;
       }
 
-      if (data && typeof data === 'object' && !('error' in data)) {
-        const settingsData = data as Record<string, any>;
-        const accessToken = settingsData['outlook_access_token'];
-        setIsConnectedToOutlook(!!accessToken);
+     essing data.events
+      if (data && typeof data === 'object' && 'events' in data && Array.isArray((data as any).events)) {
+        setEvents((data as any).events as CalendarEvent[]);
+      } else {
+        setEvents([]); // fallback: no events
       }
     } catch (error) {
-      console.error('Error checking Outlook connection:', error);
+      console.error('Error fetching events:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch calendar events',
+        variant: 'destructive',
+      });
+       setEvents([]); // On failure, clear the events
+    } finally {
+      setLoading(false);
     }
   };
 
