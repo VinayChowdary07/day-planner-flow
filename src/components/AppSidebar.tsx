@@ -1,5 +1,5 @@
 
-import { Calendar, FolderOpen, Target, CalendarDays } from 'lucide-react';
+import { Calendar, FolderOpen, Target, CalendarDays, LayoutDashboard } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -13,12 +13,17 @@ import {
 } from '@/components/ui/sidebar';
 
 interface AppSidebarProps {
-  activeSection: 'tasks' | 'projects' | 'goals' | 'calendar';
-  onSectionChange: (section: 'tasks' | 'projects' | 'goals' | 'calendar') => void;
+  activeSection: 'dashboard' | 'tasks' | 'projects' | 'goals' | 'calendar';
+  onSectionChange: (section: 'dashboard' | 'tasks' | 'projects' | 'goals' | 'calendar') => void;
 }
 
 export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) {
   const menuItems = [
+    {
+      title: 'Dashboard',
+      icon: LayoutDashboard,
+      key: 'dashboard' as const,
+    },
     {
       title: 'Tasks',
       icon: Calendar,
@@ -45,7 +50,7 @@ export function AppSidebar({ activeSection, onSectionChange }: AppSidebarProps) 
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 p-2">
-          <Calendar className="h-6 w-6 text-primary" />
+          <LayoutDashboard className="h-6 w-6 text-primary" />
           <span className="font-semibold">Day Planner</span>
         </div>
       </SidebarHeader>

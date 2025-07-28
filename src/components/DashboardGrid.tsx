@@ -99,7 +99,7 @@ export const DashboardGrid = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 p-2">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <DropdownMenu>
@@ -131,7 +131,7 @@ export const DashboardGrid = () => {
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-0">
           <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
             {widgets.map((widget) => (
               <DashboardWidget
