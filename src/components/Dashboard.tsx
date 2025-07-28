@@ -14,6 +14,10 @@ import { LayoutDashboard } from 'lucide-react';
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState<'dashboard' | 'tasks' | 'projects' | 'goals' | 'calendar'>('dashboard');
 
+  const handleSectionChange = (section: 'tasks' | 'projects' | 'goals' | 'calendar') => {
+    setActiveSection(section);
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
@@ -34,7 +38,10 @@ const Dashboard = () => {
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
-        <AppSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        <AppSidebar 
+          activeSection={activeSection === 'dashboard' ? 'tasks' : activeSection} 
+          onSectionChange={handleSectionChange} 
+        />
         <SidebarInset>
           <div className="flex flex-1 flex-col gap-4 p-4">
             <div className="flex items-center justify-between">
