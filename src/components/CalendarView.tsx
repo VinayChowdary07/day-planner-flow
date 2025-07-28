@@ -9,9 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarDays, Clock, MapPin, Plus, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { CalendarDays, Clock, MapPin, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Filter } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
 import { useInAppCalendar } from '@/hooks/useInAppCalendar';
+import { useTasks } from '@/hooks/useTasks';
+import { useDragAndDrop } from '@/hooks/useDragAndDrop';
+import { CalendarItem } from '@/components/CalendarItem';
+import { useToast } from '@/hooks/use-toast';
 
 interface CalendarEvent {
   id: string;
@@ -45,6 +50,8 @@ export const CalendarView = () => {
   const [view, setView] = useState<'month' | 'week'>('month');
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [showTasks, setShowTasks] = useState(true);
+  const [showEvents, setShowEvents] = useState(true);
   const [eventForm, setEventForm] = useState<EventFormData>({
     title: '',
     description: '',
@@ -57,6 +64,9 @@ export const CalendarView = () => {
   });
 
   const { events, loading, fetchEvents, createEvent, updateEvent, deleteEvent } = useInAppCalendar();
+  const { tasks, updateTask } = useTasks();
+  const { draggedItem, isDragging, startDrag, endDrag, handleDrop } = useDragAndDrop();
+  const { toast } = useToast();
 
   useEffect(() => {
     loadEvents();
@@ -70,6 +80,11 @@ export const CalendarView = () => {
 
   const handleCreateEvent = async () => {
     if (!eventForm.title || !eventForm.start_datetime || !eventForm.end_datetime) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -135,6 +150,40 @@ export const CalendarView = () => {
     });
   };
 
+  const getTasksForDate = (date: Date) => {
+    return tasks.filter((task) => {
+      const taskDate = new Date(task.task_date);
+      return isSameDay(taskDate, date);
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDropOnDate = async (date: Date, e: React.DragEvent) => {
+    e.preventDefault();
+    
+    if (!draggedItem) return;
+
+    try {
+      await handleDrop(date, updateEvent, updateTask);
+      toast({
+        title: 'Success',
+        description: `${draggedItem.type === 'event' ? 'Event' : 'Task'} moved successfully`,
+      });
+      loadEvents();
+    } catch (error) {
+      console.error('Error dropping item:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to move item',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -145,7 +194,8 @@ export const CalendarView = () => {
     let day = calendarStart;
 
     while (day <= calendarEnd) {
-      const dayEvents = getEventsForDate(day);
+      const dayEvents = showEvents ? getEventsForDate(day) : [];
+      const dayTasks = showTasks ? getTasksForDate(day) : [];
       const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
       const isSelected = isSameDay(day, selectedDate);
       const isToday = isSameDay(day, new Date());
@@ -158,24 +208,38 @@ export const CalendarView = () => {
             ${isCurrentMonth ? 'bg-background' : 'bg-muted/50'}
             ${isSelected ? 'bg-primary/10' : ''}
             ${isToday ? 'bg-accent' : ''}
+            ${isDragging ? 'border-dashed border-primary' : ''}
           `}
           onClick={() => setSelectedDate(day)}
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDropOnDate(day, e)}
         >
           <div className={`text-sm font-medium mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'}`}>
             {format(day, 'd')}
           </div>
           <div className="space-y-1">
-            {dayEvents.slice(0, 3).map((event) => (
-              <div
+            {dayEvents.slice(0, 2).map((event) => (
+              <CalendarItem
                 key={event.id}
-                className="text-xs p-1 rounded truncate"
-                style={{ backgroundColor: event.color + '20', color: event.color }}
-              >
-                {event.title}
-              </div>
+                item={event}
+                type="event"
+                onClick={() => handleEditEvent(event)}
+                onDragStart={startDrag}
+              />
             ))}
-            {dayEvents.length > 3 && (
-              <div className="text-xs text-muted-foreground">+{dayEvents.length - 3} more</div>
+            {dayTasks.slice(0, 2).map((task) => (
+              <CalendarItem
+                key={task.id}
+                item={task}
+                type="task"
+                onClick={() => {/* Task editing will be handled by existing task components */}}
+                onDragStart={startDrag}
+              />
+            ))}
+            {(dayEvents.length + dayTasks.length) > 2 && (
+              <div className="text-xs text-muted-foreground">
+                +{(dayEvents.length + dayTasks.length) - 2} more
+              </div>
             )}
           </div>
         </div>,
@@ -202,36 +266,38 @@ export const CalendarView = () => {
     return (
       <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day) => {
-          const dayEvents = getEventsForDate(day);
+          const dayEvents = showEvents ? getEventsForDate(day) : [];
+          const dayTasks = showTasks ? getTasksForDate(day) : [];
           const isToday = isSameDay(day, new Date());
 
           return (
-            <div key={day.toString()} className="border border-border rounded-lg p-3">
+            <div 
+              key={day.toString()} 
+              className={`border border-border rounded-lg p-3 ${isDragging ? 'border-dashed border-primary' : ''}`}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDropOnDate(day, e)}
+            >
               <div className={`text-sm font-medium mb-2 ${isToday ? 'text-primary' : 'text-foreground'}`}>
                 {format(day, 'EEE d')}
               </div>
               <div className="space-y-2">
                 {dayEvents.map((event) => (
-                  <div
+                  <CalendarItem
                     key={event.id}
-                    className="text-xs p-2 rounded cursor-pointer hover:opacity-80"
-                    style={{ backgroundColor: event.color + '20', color: event.color }}
+                    item={event}
+                    type="event"
                     onClick={() => handleEditEvent(event)}
-                  >
-                    <div className="font-medium">{event.title}</div>
-                    {!event.is_all_day && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Clock className="h-3 w-3" />
-                        {format(parseISO(event.start_datetime), 'HH:mm')}
-                      </div>
-                    )}
-                    {event.location && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {event.location}
-                      </div>
-                    )}
-                  </div>
+                    onDragStart={startDrag}
+                  />
+                ))}
+                {dayTasks.map((task) => (
+                  <CalendarItem
+                    key={task.id}
+                    item={task}
+                    type="task"
+                    onClick={() => {/* Task editing will be handled by existing task components */}}
+                    onDragStart={startDrag}
+                  />
                 ))}
               </div>
             </div>
@@ -246,6 +312,9 @@ export const CalendarView = () => {
     newMonth.setMonth(currentMonth.getMonth() + (direction === 'next' ? 1 : -1));
     setCurrentMonth(newMonth);
   };
+
+  const selectedDateEvents = showEvents ? getEventsForDate(selectedDate) : [];
+  const selectedDateTasks = showTasks ? getTasksForDate(selectedDate) : [];
 
   return (
     <div className="space-y-6">
@@ -273,121 +342,144 @@ export const CalendarView = () => {
           </div>
         </div>
 
-        <Dialog open={showEventDialog} onOpenChange={(open) => {
-          setShowEventDialog(open);
-          if (!open) {
-            setEditingEvent(null);
-            resetForm();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Event
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  value={eventForm.title}
-                  onChange={(e) => setEventForm((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="Event title"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={eventForm.description}
-                  onChange={(e) => setEventForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Event description"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_all_day"
-                  checked={eventForm.is_all_day}
-                  onCheckedChange={(checked) => setEventForm((prev) => ({ ...prev, is_all_day: checked as boolean }))}
-                />
-                <Label htmlFor="is_all_day">All day event</Label>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start">Start *</Label>
-                  <Input
-                    id="start"
-                    type={eventForm.is_all_day ? 'date' : 'datetime-local'}
-                    value={eventForm.start_datetime}
-                    onChange={(e) => setEventForm((prev) => ({ ...prev, start_datetime: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="end">End *</Label>
-                  <Input
-                    id="end"
-                    type={eventForm.is_all_day ? 'date' : 'datetime-local'}
-                    value={eventForm.end_datetime}
-                    onChange={(e) => setEventForm((prev) => ({ ...prev, end_datetime: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={eventForm.location}
-                  onChange={(e) => setEventForm((prev) => ({ ...prev, location: e.target.value }))}
-                  placeholder="Event location"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="recurrence">Recurrence</Label>
-                <Select value={eventForm.recurrence_type} onValueChange={(value) => setEventForm((prev) => ({ ...prev, recurrence_type: value as any }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select recurrence" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No recurrence</SelectItem>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="color">Color</Label>
-                <Input
-                  id="color"
-                  type="color"
-                  value={eventForm.color}
-                  onChange={(e) => setEventForm((prev) => ({ ...prev, color: e.target.value }))}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowEventDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateEvent}>
-                  {editingEvent ? 'Update Event' : 'Create Event'}
-                </Button>
-              </div>
+        <div className="flex items-center gap-2">
+          {/* Filter Controls */}
+          <div className="flex items-center gap-2 mr-4">
+            <Filter className="h-4 w-4" />
+            <div className="flex items-center gap-1">
+              <Switch
+                id="show-events"
+                checked={showEvents}
+                onCheckedChange={setShowEvents}
+              />
+              <Label htmlFor="show-events" className="text-sm">Events</Label>
             </div>
-          </DialogContent>
-        </Dialog>
+            <div className="flex items-center gap-1">
+              <Switch
+                id="show-tasks"
+                checked={showTasks}
+                onCheckedChange={setShowTasks}
+              />
+              <Label htmlFor="show-tasks" className="text-sm">Tasks</Label>
+            </div>
+          </div>
+
+          <Dialog open={showEventDialog} onOpenChange={(open) => {
+            setShowEventDialog(open);
+            if (!open) {
+              setEditingEvent(null);
+              resetForm();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Event
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="title">Title *</Label>
+                  <Input
+                    id="title"
+                    value={eventForm.title}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, title: e.target.value }))}
+                    placeholder="Event title"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={eventForm.description}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="Event description"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_all_day"
+                    checked={eventForm.is_all_day}
+                    onCheckedChange={(checked) => setEventForm((prev) => ({ ...prev, is_all_day: checked as boolean }))}
+                  />
+                  <Label htmlFor="is_all_day">All day event</Label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start">Start *</Label>
+                    <Input
+                      id="start"
+                      type={eventForm.is_all_day ? 'date' : 'datetime-local'}
+                      value={eventForm.start_datetime}
+                      onChange={(e) => setEventForm((prev) => ({ ...prev, start_datetime: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end">End *</Label>
+                    <Input
+                      id="end"
+                      type={eventForm.is_all_day ? 'date' : 'datetime-local'}
+                      value={eventForm.end_datetime}
+                      onChange={(e) => setEventForm((prev) => ({ ...prev, end_datetime: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={eventForm.location}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, location: e.target.value }))}
+                    placeholder="Event location"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="recurrence">Recurrence</Label>
+                  <Select value={eventForm.recurrence_type} onValueChange={(value) => setEventForm((prev) => ({ ...prev, recurrence_type: value as any }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select recurrence" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No recurrence</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="color">Color</Label>
+                  <Input
+                    id="color"
+                    type="color"
+                    value={eventForm.color}
+                    onChange={(e) => setEventForm((prev) => ({ ...prev, color: e.target.value }))}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowEventDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateEvent}>
+                    {editingEvent ? 'Update Event' : 'Create Event'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Calendar Navigation */}
@@ -417,20 +509,20 @@ export const CalendarView = () => {
         </CardContent>
       </Card>
 
-      {/* Events for Selected Date */}
+      {/* Events and Tasks for Selected Date */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5" />
-            Events for {format(selectedDate, 'MMMM d, yyyy')}
+            Items for {format(selectedDate, 'MMMM d, yyyy')}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {getEventsForDate(selectedDate).length === 0 ? (
-            <p className="text-muted-foreground">No events for this date</p>
+          {selectedDateEvents.length === 0 && selectedDateTasks.length === 0 ? (
+            <p className="text-muted-foreground">No events or tasks for this date</p>
           ) : (
             <div className="space-y-3">
-              {getEventsForDate(selectedDate).map((event) => (
+              {selectedDateEvents.map((event) => (
                 <div key={event.id} className="flex items-start gap-3 p-3 border border-border rounded-lg">
                   <div
                     className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
@@ -469,6 +561,35 @@ export const CalendarView = () => {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                  </div>
+                </div>
+              ))}
+              {selectedDateTasks.map((task) => (
+                <div key={task.id} className="flex items-start gap-3 p-3 border border-dashed border-border rounded-lg bg-muted/30">
+                  <div
+                    className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                    style={{ backgroundColor: task.status === 'complete' ? '#10b981' : '#f59e0b' }}
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium">{task.title}</h4>
+                    {task.description && <p className="text-sm text-muted-foreground mt-1">{task.description}</p>}
+                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      {task.start_time && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {task.start_time} {task.end_time && `- ${task.end_time}`}
+                        </div>
+                      )}
+                      {task.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {task.location}
+                        </div>
+                      )}
+                      <Badge variant={task.status === 'complete' ? 'default' : 'secondary'}>
+                        {task.status}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               ))}
