@@ -264,14 +264,14 @@ export const CalendarView = () => {
         <div
           key={day.toString()}
           className={`
-            min-h-[120px] border border-border p-2 transition-all duration-200
+            min-h-[120px] border border-border p-2 transition-all duration-200 calendar-day
             ${isCurrentMonth 
               ? 'bg-background hover:bg-accent/50 cursor-pointer' 
-              : 'bg-muted/20 cursor-not-allowed opacity-30 pointer-events-none'
+              : 'bg-muted/20 cursor-not-allowed opacity-30'
             }
             ${isSelected && isCurrentMonth ? 'bg-primary/10 border-primary' : ''}
             ${isToday && isCurrentMonth ? 'ring-2 ring-primary ring-offset-2' : ''}
-            ${isDragging && isValidDrop ? 'border-2 border-dashed border-primary bg-primary/5' : ''}
+            ${isDragging && isValidDrop ? 'border-2 border-dashed border-primary/50 bg-primary/5' : ''}
             ${isDragging && !isValidDrop ? 'border-2 border-dashed border-destructive/50 bg-destructive/5' : ''}
           `}
           onClick={() => handleDateClick(day)}
@@ -285,6 +285,9 @@ export const CalendarView = () => {
               handleDropOnDate(day, e);
             }
           }}
+          style={{
+            pointerEvents: isCurrentMonth ? 'auto' : 'none'
+          }}
         >
           <div className={`text-sm font-medium mb-1 ${
             isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'
@@ -292,7 +295,7 @@ export const CalendarView = () => {
             {format(day, 'd')}
           </div>
           {isCurrentMonth && (
-            <div className="space-y-1">
+            <div className="space-y-1 drag-container">
               {dayEvents.slice(0, 2).map((event) => (
                 <CalendarItem
                   key={event.id}
@@ -300,6 +303,7 @@ export const CalendarView = () => {
                   type="event"
                   onClick={() => handleEditEvent(event)}
                   onDragStart={startDrag}
+                  className="draggable-item"
                 />
               ))}
               {dayTasks.slice(0, 2).map((task) => (
@@ -309,6 +313,7 @@ export const CalendarView = () => {
                   type="task"
                   onClick={() => {/* Task editing will be handled by existing task components */}}
                   onDragStart={startDrag}
+                  className="draggable-item"
                 />
               ))}
               {(dayEvents.length + dayTasks.length) > 2 && (
@@ -331,6 +336,28 @@ export const CalendarView = () => {
           </div>
         ))}
         {days}
+        <style jsx>{`
+          .calendar-day .draggable-item {
+            pointer-events: auto;
+          }
+          .calendar-day .draggable-item:focus,
+          .calendar-day .draggable-item:active {
+            outline: none !important;
+            border-color: transparent !important;
+          }
+          .calendar-day .draggable-item[draggable="true"] {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            outline: none !important;
+          }
+          .calendar-day .draggable-item.dragging {
+            border: 1px solid hsl(var(--primary)) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+            background: hsl(var(--primary) / 0.1) !important;
+          }
+        `}</style>
       </div>
     );
   };

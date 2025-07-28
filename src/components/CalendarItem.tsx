@@ -28,11 +28,21 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
       data: item
     }));
     onDragStart(item.id, type, item);
+    
+    // Remove default drag outline
+    const target = e.target as HTMLElement;
+    target.style.outline = 'none';
+    target.style.border = 'none';
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
     console.log('Drag end event triggered for:', item.id);
     e.dataTransfer.clearData();
+    
+    // Reset styles
+    const target = e.target as HTMLElement;
+    target.style.outline = '';
+    target.style.border = '';
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -65,10 +75,19 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
       onClick={handleClick}
       className={cn(
         'text-xs p-1.5 rounded border-l-2 cursor-grab active:cursor-grabbing hover:opacity-80 transition-all duration-200 select-none',
+        'focus:outline-none focus:ring-0 focus:border-transparent',
+        'drag-item',
         type === 'task' && 'border-dashed',
         className
       )}
-      style={getItemStyle()}
+      style={{
+        ...getItemStyle(),
+        outline: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
+        userSelect: 'none',
+      }}
     >
       <div className="flex items-center gap-1 mb-1">
         {type === 'task' && (
@@ -99,6 +118,30 @@ export const CalendarItem: React.FC<CalendarItemProps> = ({
           <span className="truncate">{item.location}</span>
         </div>
       )}
+      
+      <style jsx>{`
+        .drag-item:focus,
+        .drag-item:active,
+        .drag-item[draggable="true"]:focus,
+        .drag-item[draggable="true"]:active {
+          outline: none !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        
+        .drag-item::-moz-focus-inner {
+          border: 0 !important;
+        }
+        
+        .drag-item {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -khtml-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+      `}</style>
     </div>
   );
 };
