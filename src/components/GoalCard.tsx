@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Goal, GoalProgress } from '@/types/goal';
 import { Task } from '@/types/task';
@@ -110,7 +109,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
 
   if (loading) {
     return (
-      <Card className="h-80 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+      <Card className="h-96 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
         <CardContent className="p-6 h-full flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
         </CardContent>
@@ -119,42 +118,30 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
   }
 
   return (
-    <Card className={`relative bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 border-t-4 ${getCardBorderColor()} hover:shadow-xl transition-all duration-300 group h-80`}>
-      <CardHeader className="pb-4">
+    <Card className={`relative bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 border-t-4 ${getCardBorderColor()} hover:shadow-xl transition-all duration-300 group h-96 flex flex-col`}>
+      <CardHeader className="pb-4 flex-shrink-0">
         <div className="flex items-start justify-between">
           <div className="flex-1 pr-2">
             <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-xl font-bold text-white line-clamp-1">{goal.title}</CardTitle>
+              <CardTitle className="text-xl font-bold text-white line-clamp-1 flex-1">{goal.title}</CardTitle>
               {isCompleted && (
-                <Badge className="bg-green-600 text-white text-xs px-2 py-1 whitespace-nowrap">
-                  completed
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Trophy className="h-4 w-4 text-yellow-500" />
+                  <Badge className="bg-green-600 text-white text-xs px-2 py-1 whitespace-nowrap">
+                    completed
+                  </Badge>
+                </div>
               )}
             </div>
             
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-3">
+            <div className="flex items-center gap-2 text-slate-400 text-sm">
               <User className="h-4 w-4" />
               <span>Personal</span>
             </div>
-
-            {/* Description with fixed height */}
-            <div className="h-10 mb-4">
-              {goal.description && (
-                <p className="text-slate-300 text-sm line-clamp-2">
-                  {goal.description}
-                </p>
-              )}
-            </div>
           </div>
 
-          {/* Action buttons with proper spacing */}
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-            {/* Trophy for completed goals - positioned to not overlap */}
-            {isCompleted && (
-              <div className="p-1">
-                <Trophy className="h-5 w-5 text-yellow-500" />
-              </div>
-            )}
+          {/* Action buttons */}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {onEdit && (
               <Button
                 variant="ghost"
@@ -180,8 +167,17 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
       </CardHeader>
 
       <CardContent className="pt-0 flex-1 flex flex-col">
+        {/* Description with fixed height */}
+        <div className="h-16 mb-4 flex-shrink-0">
+          {goal.description && (
+            <p className="text-slate-300 text-sm line-clamp-3">
+              {goal.description}
+            </p>
+          )}
+        </div>
+
         {/* Progress Section */}
-        <div className="mb-4">
+        <div className="mb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-slate-300 text-sm font-medium">Progress</span>
             <span className="text-white text-lg font-bold">{progressPercentage}%</span>
@@ -196,7 +192,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
         </div>
 
         {/* Task Statistics */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-2 gap-4 mb-6 flex-shrink-0">
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-400">{completedTasks}</div>
             <div className="text-slate-400 text-sm">Tasks Done</div>
@@ -208,7 +204,7 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
         </div>
 
         {/* Tags section - reserved space for future use */}
-        <div className="mb-4 min-h-[24px]">
+        <div className="mb-4 min-h-[28px] flex-shrink-0">
           {goal.description && (
             <div className="flex flex-wrap gap-1">
               {goal.description.split(' ').slice(0, 3).map((tag, index) => (
@@ -220,8 +216,8 @@ export const GoalCard = ({ goal, onEdit, onDelete }: GoalCardProps) => {
           )}
         </div>
 
-        {/* Dates section at bottom */}
-        <div className="mt-auto space-y-2 text-xs text-slate-400">
+        {/* Dates section at bottom - properly contained within card */}
+        <div className="mt-auto space-y-2 text-xs text-slate-400 flex-shrink-0">
           <div className="min-h-[16px]">
             {goal.start_date && (
               <div className="flex items-center gap-2">
