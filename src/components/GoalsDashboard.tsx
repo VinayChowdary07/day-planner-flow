@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 export const GoalsDashboard = () => {
-  const { goals, loading, createGoal, updateGoal, deleteGoal } = useGoals();
+  const { goals, loading, createGoal, updateGoal, deleteGoal, getGoalProgress } = useGoals();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isGoalFormOpen, setIsGoalFormOpen] = useState(false);
@@ -35,51 +35,74 @@ export const GoalsDashboard = () => {
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 
-  // Calculate goal statistics
+  // Calculate goal statistics with proper progress tracking
   const calculateStats = async () => {
     if (!goals.length) {
       setGoalStats({ total: 0, active: 0, completed: 0, avgProgress: 0 });
       return;
     }
 
+    console.log('Calculating stats for goals:', goals.length);
+
     let totalProgress = 0;
     let completedCount = 0;
     let activeCount = 0;
+    let validProgressCount = 0;
 
-    // Import the hook function to calculate progress
-    const { getGoalProgress } = useGoals();
-
+    // Process each goal to get its progress
     for (const goal of goals) {
       try {
         const progress = await getGoalProgress(goal.id);
+        console.log(`Goal ${goal.title} progress:`, progress);
+        
         if (progress) {
-          totalProgress += progress.percentage || 0;
-          if (progress.percentage === 100) {
+          const percentage = progress.percentage || 0;
+          totalProgress += percentage;
+          validProgressCount++;
+          
+          if (percentage >= 100) {
             completedCount++;
           } else {
             activeCount++;
           }
+        } else {
+          // If no progress data, consider it active with 0% progress
+          activeCount++;
+          validProgressCount++;
         }
       } catch (error) {
         console.error('Error calculating progress for goal:', goal.id, error);
+        // Still count it as active even if there's an error
+        activeCount++;
+        validProgressCount++;
       }
     }
 
-    setGoalStats({
+    const avgProgress = validProgressCount > 0 ? Math.round(totalProgress / validProgressCount) : 0;
+
+    const newStats = {
       total: goals.length,
       active: activeCount,
       completed: completedCount,
-      avgProgress: Math.round(totalProgress / goals.length)
-    });
+      avgProgress: avgProgress
+    };
+
+    console.log('Calculated stats:', newStats);
+    setGoalStats(newStats);
   };
 
+  // Recalculate stats whenever goals change or refresh is triggered
   useEffect(() => {
-    calculateStats();
+    if (goals.length >= 0) { // Check for >= 0 to handle empty arrays
+      calculateStats();
+    }
   }, [goals, refreshTrigger]);
 
-  // Enhanced real-time subscription
+  // Enhanced real-time subscription for all relevant tables
   useEffect(() => {
     if (!user) return;
+
+    console.log('Setting up real-time subscriptions for goals dashboard');
 
     const channel = supabase
       .channel('goals-dashboard-realtime')
@@ -91,7 +114,8 @@ export const GoalsDashboard = () => {
           table: 'tasks',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('Tasks table changed:', payload);
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -102,7 +126,8 @@ export const GoalsDashboard = () => {
           schema: 'public',
           table: 'goal_tasks',
         },
-        () => {
+        (payload) => {
+          console.log('Goal_tasks table changed:', payload);
           setRefreshTrigger(prev => prev + 1);
         }
       )
@@ -114,13 +139,15 @@ export const GoalsDashboard = () => {
           table: 'goals',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('Goals table changed:', payload);
           setRefreshTrigger(prev => prev + 1);
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up real-time subscriptions');
       supabase.removeChannel(channel);
     };
   }, [user]);
