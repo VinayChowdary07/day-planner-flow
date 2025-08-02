@@ -1,5 +1,3 @@
-
-
 export interface Task {
   id: string;
   user_id: string;
@@ -32,3 +30,4 @@ export interface TaskFilters {
   category: string;
   dateRange: 'today' | 'week' | 'month' | 'all';
 }
+
