@@ -17,6 +17,7 @@ export const useProjects = () => {
     }
 
     try {
+      console.log('Fetching projects for user:', user.id);
       const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -24,6 +25,7 @@ export const useProjects = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Fetched projects:', data?.length || 0);
       setProjects((data || []) as Project[]);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -41,12 +43,13 @@ export const useProjects = () => {
     fetchProjects();
   }, [fetchProjects]);
 
-  // Set up real-time subscription
+  // Enhanced real-time subscription with better event handling
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up real-time subscription for projects');
     const channel = supabase
-      .channel('projects-changes')
+      .channel('projects-realtime')
       .on(
         'postgres_changes',
         {
@@ -56,21 +59,36 @@ export const useProjects = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time project update:', payload);
-          fetchProjects();
+          console.log('Real-time project update:', payload.eventType, payload);
+          
+          // Handle different event types for immediate UI updates
+          if (payload.eventType === 'INSERT') {
+            console.log('Project inserted:', payload.new);
+            setProjects(prev => [payload.new as Project, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('Project updated:', payload.new);
+            setProjects(prev => prev.map(project => 
+              project.id === payload.new.id ? payload.new as Project : project
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Project deleted:', payload.old);
+            setProjects(prev => prev.filter(project => project.id !== payload.old.id));
+          }
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up projects real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [user, fetchProjects]);
+  }, [user]);
 
   const createProject = async (projectData: Partial<Project>) => {
     if (!user || !projectData.name) return;
 
     try {
+      console.log('Creating project:', projectData);
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -85,6 +103,7 @@ export const useProjects = () => {
 
       if (error) throw error;
 
+      console.log('Project created successfully:', data);
       toast({
         title: 'Success',
         description: 'Project created successfully',
@@ -104,6 +123,7 @@ export const useProjects = () => {
 
   const updateProject = async (id: string, updates: Partial<Project>) => {
     try {
+      console.log('Updating project:', id, 'with updates:', updates);
       const { data, error } = await supabase
         .from('projects')
         .update(updates)
@@ -113,6 +133,7 @@ export const useProjects = () => {
 
       if (error) throw error;
 
+      console.log('Project updated successfully:', data);
       toast({
         title: 'Success',
         description: 'Project updated successfully',
@@ -132,6 +153,7 @@ export const useProjects = () => {
 
   const deleteProject = async (id: string) => {
     try {
+      console.log('Deleting project:', id);
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -139,6 +161,7 @@ export const useProjects = () => {
 
       if (error) throw error;
 
+      console.log('Project deleted successfully:', id);
       toast({
         title: 'Success',
         description: 'Project deleted successfully',

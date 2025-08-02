@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CalendarEvent {
   id: string;
@@ -57,10 +58,54 @@ export const useInAppCalendar = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Real-time subscription for calendar events
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('Setting up real-time subscription for calendar events');
+    const channel = supabase
+      .channel('calendar-events-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'calendar_events',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Real-time calendar event update:', payload.eventType, payload);
+          
+          if (payload.eventType === 'INSERT') {
+            console.log('Calendar event inserted:', payload.new);
+            const newEvent = transformToCalendarEvent(payload.new);
+            setEvents(prev => [...prev, newEvent]);
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('Calendar event updated:', payload.new);
+            const updatedEvent = transformToCalendarEvent(payload.new);
+            setEvents(prev => prev.map(event => 
+              event.id === updatedEvent.id ? updatedEvent : event
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Calendar event deleted:', payload.old);
+            setEvents(prev => prev.filter(event => event.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up calendar events real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const fetchEvents = async (startDate: string, endDate: string) => {
     setLoading(true);
     try {
+      console.log('Fetching calendar events from', startDate, 'to', endDate);
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
@@ -71,6 +116,7 @@ export const useInAppCalendar = () => {
       if (error) throw error;
 
       const transformedEvents = (data || []).map(transformToCalendarEvent);
+      console.log('Fetched calendar events:', transformedEvents.length);
       setEvents(transformedEvents);
       return transformedEvents;
     } catch (error) {
@@ -91,6 +137,7 @@ export const useInAppCalendar = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Creating calendar event:', eventData);
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([{
@@ -110,6 +157,7 @@ export const useInAppCalendar = () => {
 
       if (error) throw error;
 
+      console.log('Calendar event created successfully:', data);
       toast({
         title: 'Success',
         description: 'Event created successfully',
@@ -129,6 +177,7 @@ export const useInAppCalendar = () => {
 
   const updateEvent = async (eventId: string, eventData: Partial<EventFormData>) => {
     try {
+      console.log('Updating calendar event:', eventId, 'with data:', eventData);
       const { data, error } = await supabase
         .from('calendar_events')
         .update({
@@ -141,6 +190,7 @@ export const useInAppCalendar = () => {
 
       if (error) throw error;
 
+      console.log('Calendar event updated successfully:', data);
       toast({
         title: 'Success',
         description: 'Event updated successfully',
@@ -160,6 +210,7 @@ export const useInAppCalendar = () => {
 
   const deleteEvent = async (eventId: string) => {
     try {
+      console.log('Deleting calendar event:', eventId);
       const { error } = await supabase
         .from('calendar_events')
         .delete()
@@ -167,6 +218,7 @@ export const useInAppCalendar = () => {
 
       if (error) throw error;
 
+      console.log('Calendar event deleted successfully:', eventId);
       toast({
         title: 'Success',
         description: 'Event deleted successfully',

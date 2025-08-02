@@ -17,6 +17,7 @@ export const useGoals = () => {
     }
 
     try {
+      console.log('Fetching goals for user:', user.id);
       const { data, error } = await supabase
         .from('goals')
         .select('*')
@@ -24,6 +25,7 @@ export const useGoals = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Fetched goals:', data?.length || 0);
       setGoals(data || []);
     } catch (error) {
       console.error('Error fetching goals:', error);
@@ -41,11 +43,14 @@ export const useGoals = () => {
     fetchGoals();
   }, [fetchGoals]);
 
+  // Enhanced real-time subscription for goals and related tables
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up real-time subscriptions for goals');
+    
     const channel = supabase
-      .channel('goals-changes')
+      .channel('goals-realtime')
       .on(
         'postgres_changes',
         {
@@ -55,13 +60,55 @@ export const useGoals = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time goal update:', payload);
+          console.log('Real-time goal update:', payload.eventType, payload);
+          
+          if (payload.eventType === 'INSERT') {
+            console.log('Goal inserted:', payload.new);
+            setGoals(prev => [payload.new as Goal, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('Goal updated:', payload.new);
+            setGoals(prev => prev.map(goal => 
+              goal.id === payload.new.id ? payload.new as Goal : goal
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            console.log('Goal deleted:', payload.old);
+            setGoals(prev => prev.filter(goal => goal.id !== payload.old.id));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'goal_tasks',
+        },
+        (payload) => {
+          console.log('Goal tasks relationship changed:', payload.eventType, payload);
+          // Trigger a refetch of goals when goal-task relationships change
+          // This ensures goal progress calculations stay up to date
+          fetchGoals();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Task changed (affects goal progress):', payload.eventType, payload);
+          // When tasks change, it affects goal progress, so we need to update
+          // This is especially important for task status changes
           fetchGoals();
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up goals real-time subscriptions');
       supabase.removeChannel(channel);
     };
   }, [user, fetchGoals]);
@@ -70,6 +117,7 @@ export const useGoals = () => {
     if (!user || !goalData.title) return;
 
     try {
+      console.log('Creating goal:', goalData);
       const { data, error } = await supabase
         .from('goals')
         .insert({
@@ -85,6 +133,7 @@ export const useGoals = () => {
 
       if (error) throw error;
 
+      console.log('Goal created successfully:', data);
       toast({
         title: 'Success',
         description: 'Goal created successfully',
@@ -128,6 +177,7 @@ export const useGoals = () => {
 
       if (error) throw error;
 
+      console.log('Goal updated successfully:', data);
       toast({
         title: 'Success',
         description: 'Goal updated successfully',
@@ -147,6 +197,7 @@ export const useGoals = () => {
 
   const deleteGoal = async (id: string) => {
     try {
+      console.log('Deleting goal:', id);
       const { error } = await supabase
         .from('goals')
         .delete()
@@ -154,6 +205,7 @@ export const useGoals = () => {
 
       if (error) throw error;
 
+      console.log('Goal deleted successfully:', id);
       toast({
         title: 'Success',
         description: 'Goal deleted successfully',
@@ -171,6 +223,7 @@ export const useGoals = () => {
 
   const linkTaskToGoal = async (goalId: string, taskId: string) => {
     try {
+      console.log('Linking task to goal:', taskId, '->', goalId);
       const { error } = await supabase
         .from('goal_tasks')
         .insert({
@@ -180,6 +233,7 @@ export const useGoals = () => {
 
       if (error) throw error;
 
+      console.log('Task linked to goal successfully');
       toast({
         title: 'Success',
         description: 'Task linked to goal successfully',
@@ -197,6 +251,7 @@ export const useGoals = () => {
 
   const unlinkTaskFromGoal = async (goalId: string, taskId: string) => {
     try {
+      console.log('Unlinking task from goal:', taskId, 'from', goalId);
       const { error } = await supabase
         .from('goal_tasks')
         .delete()
@@ -205,6 +260,7 @@ export const useGoals = () => {
 
       if (error) throw error;
 
+      console.log('Task unlinked from goal successfully');
       toast({
         title: 'Success',
         description: 'Task unlinked from goal successfully',
