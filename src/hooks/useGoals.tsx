@@ -101,7 +101,7 @@ export const useGoals = () => {
         (payload) => {
           console.log('Task changed (affects goal progress):', payload.eventType, payload);
           // When tasks change, it affects goal progress, so we need to update
-          // This is especially important for task status changes
+          // This is especially important for task status changes and recurring task instances
           fetchGoals();
         }
       )
@@ -280,7 +280,7 @@ export const useGoals = () => {
     try {
       console.log('Fetching tasks for goal:', goalId);
       
-      // First, get all tasks that have the goal_id directly set
+      // Get all tasks that have the goal_id directly set (including recurring task instances)
       const { data: directTasks, error: directError } = await supabase
         .from('tasks')
         .select('*')
@@ -290,7 +290,7 @@ export const useGoals = () => {
         console.error('Error fetching direct tasks:', directError);
       }
 
-      // Then, get tasks linked through goal_tasks junction table
+      // Get tasks linked through goal_tasks junction table
       const { data: linkedTasks, error: linkedError } = await supabase
         .from('goal_tasks')
         .select(`
@@ -359,20 +359,37 @@ export const useGoals = () => {
 
       const tasks = await getGoalTasks(goalId);
       
-      // Simple calculation: completed tasks / total tasks
+      // Enhanced calculation for recurring tasks
       const totalTasks = tasks.length;
       const completedTasks = tasks.filter(task => task.status === 'complete').length;
       
-      // Check if any tasks are recurring for the infinite indicator
-      const hasInfiniteRecurring = tasks.some(task => task.recurrence && task.recurrence !== 'none');
+      // Check if any parent tasks are recurring for the infinite indicator
+      const hasInfiniteRecurring = tasks.some(task => 
+        task.recurrence && task.recurrence !== 'none' && !task.parent_task_id
+      );
       
-      // Count recurring completions for display purposes
-      const totalRecurringCompletions = tasks.filter(task => 
-        task.recurrence && task.recurrence !== 'none' && task.status === 'complete'
-      ).length;
+      // Count all recurring completions (from both template and instance tasks)
+      const totalRecurringCompletions = tasks.filter(task => {
+        // Count completed tasks that are either recurring templates or instances of recurring tasks
+        return task.status === 'complete' && (
+          (task.recurrence && task.recurrence !== 'none') || // Recurring template
+          task.parent_task_id // Instance of a recurring task
+        );
+      }).length;
 
-      // Calculate percentage: if no tasks, show 0%; otherwise show actual percentage
-      const percentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+      // Calculate percentage based on whether we have recurring tasks or not
+      let percentage: number | null = null;
+      
+      if (hasInfiniteRecurring) {
+        // For goals with recurring tasks, percentage is null (infinite)
+        percentage = null;
+      } else if (totalTasks === 0) {
+        // No tasks, 0%
+        percentage = 0;
+      } else {
+        // Normal percentage calculation
+        percentage = Math.round((completedTasks / totalTasks) * 100);
+      }
 
       const progress = {
         goal,

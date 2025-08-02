@@ -67,12 +67,15 @@ export const useTasks = () => {
           
           // Handle different event types
           if (payload.eventType === 'INSERT') {
-            setTasks(prev => [...prev, payload.new as Task]);
+            console.log('Task inserted:', payload.new);
+            setTasks(prev => [payload.new as Task, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
+            console.log('Task updated:', payload.new);
             setTasks(prev => prev.map(task => 
               task.id === payload.new.id ? payload.new as Task : task
             ));
           } else if (payload.eventType === 'DELETE') {
+            console.log('Task deleted:', payload.old);
             setTasks(prev => prev.filter(task => task.id !== payload.old.id));
           }
         }
@@ -117,9 +120,24 @@ export const useTasks = () => {
 
       // Set next_occurrence for recurring tasks
       if (taskData.recurrence && taskData.recurrence !== 'none') {
-        const nextDay = new Date(taskData.task_date);
-        nextDay.setDate(nextDay.getDate() + 1);
+        const taskDate = new Date(taskData.task_date);
+        let nextDay = new Date(taskDate);
+        
+        // Calculate the first next occurrence based on recurrence type
+        switch (taskData.recurrence) {
+          case 'daily':
+            nextDay.setDate(taskDate.getDate() + 1);
+            break;
+          case 'weekly':
+            nextDay.setDate(taskDate.getDate() + 7);
+            break;
+          case 'monthly':
+            nextDay.setMonth(taskDate.getMonth() + 1);
+            break;
+        }
+        
         insertData.next_occurrence = nextDay.toISOString();
+        console.log('Set next occurrence for recurring task:', insertData.next_occurrence);
       }
 
       console.log('Final insert data:', insertData);
@@ -136,6 +154,17 @@ export const useTasks = () => {
       }
 
       console.log('Task created successfully:', data);
+      
+      // Trigger recurring task generation if this is a recurring task
+      if (data.recurrence && data.recurrence !== 'none') {
+        console.log('Triggering recurring task generation for new recurring task');
+        try {
+          await supabase.functions.invoke('generate-recurring-tasks');
+        } catch (funcError) {
+          console.warn('Failed to trigger recurring task generation:', funcError);
+        }
+      }
+      
       toast({
         title: 'Success',
         description: 'Task created successfully',
@@ -182,13 +211,26 @@ export const useTasks = () => {
       if (updates.goal_id !== undefined) cleanUpdates.goal_id = updates.goal_id || null;
       if (updates.order_position !== undefined) cleanUpdates.order_position = updates.order_position;
 
-      // Handle template and next_occurrence logic
+      // Handle template and next_occurrence logic for recurring tasks
       if (updates.recurrence !== undefined) {
         cleanUpdates.is_template = updates.recurrence && updates.recurrence !== 'none';
         
         if (updates.recurrence && updates.recurrence !== 'none' && updates.task_date) {
-          const nextDay = new Date(updates.task_date);
-          nextDay.setDate(nextDay.getDate() + 1);
+          const taskDate = new Date(updates.task_date);
+          let nextDay = new Date(taskDate);
+          
+          switch (updates.recurrence) {
+            case 'daily':
+              nextDay.setDate(taskDate.getDate() + 1);
+              break;
+            case 'weekly':
+              nextDay.setDate(taskDate.getDate() + 7);
+              break;
+            case 'monthly':
+              nextDay.setMonth(taskDate.getMonth() + 1);
+              break;
+          }
+          
           cleanUpdates.next_occurrence = nextDay.toISOString();
         } else {
           cleanUpdates.next_occurrence = null;
