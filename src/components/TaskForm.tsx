@@ -92,17 +92,17 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
       // Clean the data before sending
       const taskData: Partial<Task> = {
         title: data.title,
-        description: data.description || undefined,
+        description: data.description || null,
         task_date: data.task_date,
-        start_time: data.start_time || undefined,
-        end_time: data.end_time || undefined,
-        location: data.location || undefined,
+        start_time: data.start_time || null,
+        end_time: data.end_time || null,
+        location: data.location || null,
         priority: data.priority,
         category: data.category,
-        recurrence: data.recurrence === 'none' ? undefined : data.recurrence,
-        recurrence_end_date: data.recurrence_end_date || undefined,
-        project_id: data.project_id === 'none' ? undefined : data.project_id,
-        goal_id: data.goal_id === 'none' ? undefined : data.goal_id,
+        recurrence: data.recurrence === 'none' ? null : data.recurrence,
+        recurrence_end_date: data.recurrence_end_date || null,
+        project_id: data.project_id === 'none' ? null : data.project_id,
+        goal_id: data.goal_id === 'none' ? null : data.goal_id,
         tags: [],
       };
 
@@ -145,16 +145,16 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
           {task ? 'Edit Task' : 'Add Task'}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-0">
+        <DialogHeader className="flex-shrink-0 p-6 pb-0">
           <DialogTitle>
             {task ? 'Edit Task' : 'Create New Task'}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 px-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pb-4">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
               <FormField
                 control={form.control}
                 name="title"
@@ -395,7 +395,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
           </Form>
         </ScrollArea>
 
-        <div className="flex gap-2 pt-4 border-t flex-shrink-0">
+        <div className="flex gap-2 p-6 pt-4 border-t flex-shrink-0">
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} className="flex-1">
             Cancel
           </Button>
