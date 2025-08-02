@@ -86,10 +86,10 @@ export const useSubtasks = (parentTaskId?: string) => {
             setSubtasks(prev => [payload.new as Task, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
             setSubtasks(prev => prev.map(task => 
-              task.id === payload.new.id ? payload.new as Task : task
+              task.id === (payload.new as Task).id ? payload.new as Task : task
             ));
           } else if (payload.eventType === 'DELETE') {
-            setSubtasks(prev => prev.filter(task => task.id !== payload.old.id));
+            setSubtasks(prev => prev.filter(task => task.id !== (payload.old as Task).id));
           }
           
           // Refresh progress when subtasks change
@@ -119,6 +119,7 @@ export const useSubtasks = (parentTaskId?: string) => {
           priority: subtaskData.priority || 'medium',
           category: subtaskData.category || 'general',
           order_position: subtasks.length,
+          tags: subtaskData.tags || [],
         })
         .select()
         .single();
