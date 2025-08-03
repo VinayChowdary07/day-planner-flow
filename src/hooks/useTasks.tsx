@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskFilters } from '@/types/task';
@@ -21,6 +22,7 @@ export const useTasks = () => {
         .from('tasks')
         .select('*')
         .eq('user_id', user.id)
+        .is('parent_task_id', null) // Only fetch main tasks, not subtasks
         .order('order_position', { ascending: true })
         .order('created_at', { ascending: false });
 
@@ -65,17 +67,26 @@ export const useTasks = () => {
         (payload) => {
           console.log('Real-time task update:', payload);
           
-          // Handle different event types
+          const taskData = payload.new as Task;
+          
+          // Handle different event types, but only for main tasks (not subtasks)
           if (payload.eventType === 'INSERT') {
             console.log('Task inserted:', payload.new);
-            setTasks(prev => [payload.new as Task, ...prev]);
+            // Only add to main tasks if it's not a subtask
+            if (!taskData?.parent_task_id) {
+              setTasks(prev => [payload.new as Task, ...prev]);
+            }
           } else if (payload.eventType === 'UPDATE') {
             console.log('Task updated:', payload.new);
-            setTasks(prev => prev.map(task => 
-              task.id === payload.new.id ? payload.new as Task : task
-            ));
+            // Only update in main tasks if it's not a subtask
+            if (!taskData?.parent_task_id) {
+              setTasks(prev => prev.map(task => 
+                task.id === payload.new.id ? payload.new as Task : task
+              ));
+            }
           } else if (payload.eventType === 'DELETE') {
             console.log('Task deleted:', payload.old);
+            // Remove from main tasks regardless (in case it was converted from main to subtask)
             setTasks(prev => prev.filter(task => task.id !== payload.old.id));
           }
         }

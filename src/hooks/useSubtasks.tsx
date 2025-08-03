@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/task';
@@ -18,6 +17,24 @@ export const useSubtasks = (parentTaskId?: string) => {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
+  const calculateProgress = useCallback((tasks: Task[]) => {
+    if (tasks.length === 0) {
+      setProgress(null);
+      return;
+    }
+
+    const completedCount = tasks.filter(task => task.status === 'complete').length;
+    const totalCount = tasks.length;
+    const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    
+    setProgress({
+      has_subtasks: true,
+      total_subtasks: totalCount,
+      completed_subtasks: completedCount,
+      progress_percentage: percentage
+    });
+  }, []);
+
   const fetchSubtasks = useCallback(async () => {
     if (!user || !parentTaskId) {
       setSubtasks([]);
@@ -36,29 +53,15 @@ export const useSubtasks = (parentTaskId?: string) => {
 
       if (error) throw error;
 
-      setSubtasks((data || []) as Task[]);
-      
-      // Calculate progress manually since RPC function doesn't exist
-      if (data && data.length > 0) {
-        const completedCount = data.filter(task => task.status === 'complete').length;
-        const totalCount = data.length;
-        const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-        
-        setProgress({
-          has_subtasks: true,
-          total_subtasks: totalCount,
-          completed_subtasks: completedCount,
-          progress_percentage: percentage
-        });
-      } else {
-        setProgress(null);
-      }
+      const subtaskData = (data || []) as Task[];
+      setSubtasks(subtaskData);
+      calculateProgress(subtaskData);
     } catch (error) {
       console.error('Error fetching subtasks:', error);
     } finally {
       setLoading(false);
     }
-  }, [user, parentTaskId]);
+  }, [user, parentTaskId, calculateProgress]);
 
   useEffect(() => {
     fetchSubtasks();
@@ -82,17 +85,29 @@ export const useSubtasks = (parentTaskId?: string) => {
           console.log('Subtask real-time update:', payload);
           
           if (payload.eventType === 'INSERT') {
-            setSubtasks(prev => [payload.new as Task, ...prev]);
+            const newSubtask = payload.new as Task;
+            setSubtasks(prev => {
+              const updated = [newSubtask, ...prev];
+              calculateProgress(updated);
+              return updated;
+            });
           } else if (payload.eventType === 'UPDATE') {
-            setSubtasks(prev => prev.map(task => 
-              task.id === (payload.new as Task).id ? payload.new as Task : task
-            ));
+            const updatedSubtask = payload.new as Task;
+            setSubtasks(prev => {
+              const updated = prev.map(task => 
+                task.id === updatedSubtask.id ? updatedSubtask : task
+              );
+              calculateProgress(updated);
+              return updated;
+            });
           } else if (payload.eventType === 'DELETE') {
-            setSubtasks(prev => prev.filter(task => task.id !== (payload.old as Task).id));
+            const deletedSubtask = payload.old as Task;
+            setSubtasks(prev => {
+              const updated = prev.filter(task => task.id !== deletedSubtask.id);
+              calculateProgress(updated);
+              return updated;
+            });
           }
-          
-          // Refresh progress when subtasks change
-          fetchSubtasks();
         }
       )
       .subscribe();
@@ -100,7 +115,7 @@ export const useSubtasks = (parentTaskId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, parentTaskId, fetchSubtasks]);
+  }, [user, parentTaskId, calculateProgress]);
 
   const createSubtask = async (subtaskData: Partial<Task>) => {
     if (!user || !parentTaskId || !subtaskData.title) return;
