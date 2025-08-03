@@ -30,8 +30,6 @@ import {
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO, isSameMonth, isAfter, isBefore, isToday } from 'date-fns';
 import { useInAppCalendar } from '@/hooks/useInAppCalendar';
 import { useTasks } from '@/hooks/useTasks';
-import { useDragAndDrop } from '@/hooks/useDragAndDrop';
-import { CalendarItem } from '@/components/CalendarItem';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -61,6 +59,12 @@ interface EventFormData {
   color: string;
 }
 
+interface DraggedItem {
+  id: string;
+  type: 'event' | 'task';
+  data: any;
+}
+
 export const CalendarView = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
@@ -68,6 +72,9 @@ export const CalendarView = () => {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [showTasks, setShowTasks] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
+  const [draggedItem, setDraggedItem] = useState<DraggedItem | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [eventForm, setEventForm] = useState<EventFormData>({
     title: '',
     description: '',
@@ -81,12 +88,38 @@ export const CalendarView = () => {
 
   const { events, loading, fetchEvents, createEvent, updateEvent, deleteEvent } = useInAppCalendar();
   const { tasks, updateTask } = useTasks();
-  const { draggedItem, isDragging, startDrag, endDrag, handleDrop } = useDragAndDrop();
   const { toast } = useToast();
 
   useEffect(() => {
     loadEvents();
   }, [currentMonth]);
+
+  // Clean up drag state on component unmount or when dragging stops
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        setDraggedItem(null);
+        setDragOverDate(null);
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsDragging(false);
+        setDraggedItem(null);
+        setDragOverDate(null);
+      }
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('keydown', handleEscape);
+    
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isDragging]);
 
   const loadEvents = async () => {
     const startDate = startOfMonth(currentMonth);
@@ -177,78 +210,109 @@ export const CalendarView = () => {
     return isSameMonth(date, currentMonth);
   };
 
-  const isValidDropTarget = (date: Date) => {
-    return isDateInCurrentMonth(date);
-  };
-
-  const clampDateToCurrentMonth = (date: Date) => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
+  const handleDragStart = (item: any, type: 'event' | 'task', e: React.DragEvent) => {
+    console.log('Drag start:', item.id, type);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', ''); // Required for some browsers
     
-    if (isBefore(date, monthStart)) {
-      return monthStart;
-    }
-    if (isAfter(date, monthEnd)) {
-      return monthEnd;
-    }
-    return date;
+    setDraggedItem({ id: item.id, type, data: item });
+    setIsDragging(true);
+    
+    // Add visual feedback
+    const target = e.target as HTMLElement;
+    target.style.opacity = '0.5';
   };
 
-  const handleDragOver = (e: React.DragEvent, date: Date) => {
-    if (!isValidDropTarget(date)) {
-      e.dataTransfer.dropEffect = 'none';
+  const handleDragEnd = (e: React.DragEvent) => {
+    console.log('Drag end');
+    const target = e.target as HTMLElement;
+    target.style.opacity = '1';
+    
+    // Clean up drag state with a slight delay to allow drop to complete
+    setTimeout(() => {
+      setIsDragging(false);
+      setDraggedItem(null);
+      setDragOverDate(null);
+    }, 100);
+  };
+
+  const handleDragOver = (date: Date, e: React.DragEvent) => {
+    if (!isDateInCurrentMonth(date) || !draggedItem) {
       return;
     }
+    
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    setDragOverDate(date);
   };
 
-  const handleDropOnDate = async (date: Date, e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear drag over if we're actually leaving the drop zone
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    const currentTarget = e.currentTarget as HTMLElement;
+    
+    if (!currentTarget.contains(relatedTarget)) {
+      setDragOverDate(null);
+    }
+  };
+
+  const handleDrop = async (date: Date, e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Drop event triggered on date:', date);
+    console.log('Drop on date:', date, 'with item:', draggedItem);
     
-    let dragData = null;
-    
-    try {
-      const jsonData = e.dataTransfer.getData('application/json');
-      if (jsonData) {
-        dragData = JSON.parse(jsonData);
-        console.log('Got drag data from dataTransfer:', dragData);
-      }
-    } catch (error) {
-      console.log('No JSON data found in drag transfer');
-    }
-    
-    if (!dragData && draggedItem) {
-      dragData = draggedItem;
-      console.log('Using draggedItem from hook:', dragData);
-    }
-    
-    if (!dragData || !isValidDropTarget(date)) {
-      console.log('Invalid drop - no drag data or invalid target');
-      endDrag();
+    if (!draggedItem || !isDateInCurrentMonth(date)) {
+      console.log('Invalid drop conditions');
       return;
     }
 
-    const clampedDate = clampDateToCurrentMonth(date);
-    console.log('Processing drop with data:', dragData, 'on date:', clampedDate);
-
     try {
-      await handleDrop(clampedDate, updateEvent, updateTask);
+      if (draggedItem.type === 'event') {
+        // Update event date
+        const originalStart = parseISO(draggedItem.data.start_datetime);
+        const originalEnd = parseISO(draggedItem.data.end_datetime);
+        const duration = originalEnd.getTime() - originalStart.getTime();
+        
+        const newStart = new Date(date);
+        newStart.setHours(originalStart.getHours(), originalStart.getMinutes(), originalStart.getSeconds());
+        
+        const newEnd = new Date(newStart.getTime() + duration);
+        
+        await updateEvent(draggedItem.id, {
+          start_datetime: newStart.toISOString(),
+          end_datetime: newEnd.toISOString(),
+        });
+        
+        console.log('Event updated successfully');
+      } else if (draggedItem.type === 'task') {
+        // Update task date
+        const dateString = format(date, 'yyyy-MM-dd');
+        await updateTask(draggedItem.id, {
+          task_date: dateString,
+        });
+        
+        console.log('Task updated successfully');
+      }
+
       toast({
         title: 'Success',
-        description: `${dragData.type === 'event' ? 'Event' : 'Task'} moved successfully`,
+        description: `${draggedItem.type === 'event' ? 'Event' : 'Task'} moved successfully`,
       });
+      
       loadEvents();
     } catch (error) {
-      console.error('Error dropping item:', error);
+      console.error('Error moving item:', error);
       toast({
         title: 'Error',
         description: 'Failed to move item',
         variant: 'destructive',
       });
+    } finally {
+      // Clean up drag state
+      setIsDragging(false);
+      setDraggedItem(null);
+      setDragOverDate(null);
     }
   };
 
@@ -275,34 +339,26 @@ export const CalendarView = () => {
       const isCurrentMonth = isDateInCurrentMonth(day);
       const isSelected = isSameDay(day, selectedDate);
       const isTodayDate = isToday(day);
-      const isValidDrop = isValidDropTarget(day);
+      const isDragOver = dragOverDate && isSameDay(dragOverDate, day);
       const totalItems = dayEvents.length + dayTasks.length;
 
       days.push(
         <div
           key={day.toString()}
           className={cn(
-            "relative min-h-[140px] border transition-all duration-300 group cursor-pointer",
+            "relative min-h-[120px] border transition-all duration-200 group cursor-pointer overflow-hidden",
             "bg-gradient-to-br from-background to-background/50",
             isCurrentMonth 
-              ? "border-border/60 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5" 
+              ? "border-border/60 hover:border-primary/40 hover:shadow-sm" 
               : "border-border/20 bg-muted/10 cursor-not-allowed opacity-40",
-            isSelected && isCurrentMonth && "ring-2 ring-primary/50 border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10",
-            isTodayDate && isCurrentMonth && "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800",
-            isDragging && isValidDrop && "border-2 border-dashed border-primary/60 bg-gradient-to-br from-primary/10 to-primary/5",
-            isDragging && !isValidDrop && "border-2 border-dashed border-destructive/50 bg-destructive/5",
+            isSelected && isCurrentMonth && "ring-1 ring-primary/50 border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10",
+            isTodayDate && isCurrentMonth && "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800",
+            isDragOver && "bg-primary/10 border-primary border-2 border-dashed"
           )}
           onClick={() => handleDateClick(day)}
-          onDragOver={(e) => {
-            if (isCurrentMonth) {
-              handleDragOver(e, day);
-            }
-          }}
-          onDrop={(e) => {
-            if (isCurrentMonth) {
-              handleDropOnDate(day, e);
-            }
-          }}
+          onDragOver={(e) => handleDragOver(day, e)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(day, e)}
         >
           {/* Date Header */}
           <div className={cn(
@@ -315,7 +371,7 @@ export const CalendarView = () => {
             )}>
               <span className={cn(
                 "text-sm font-medium",
-                isTodayDate && isCurrentMonth && "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-xs"
+                isTodayDate && isCurrentMonth && "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs"
               )}>
                 {format(day, 'd')}
               </span>
@@ -339,28 +395,21 @@ export const CalendarView = () => {
 
           {/* Items Container */}
           {isCurrentMonth && (
-            <div className="px-2 pb-2 space-y-1 flex-1 overflow-hidden">
+            <div className="px-2 pb-2 space-y-1 flex-1">
               {/* Events */}
               {dayEvents.slice(0, 2).map((event) => (
                 <div
                   key={event.id}
                   draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('application/json', JSON.stringify({
-                      id: event.id,
-                      type: 'event',
-                      data: event
-                    }));
-                    startDrag(event.id, 'event', event);
-                  }}
+                  onDragStart={(e) => handleDragStart(event, 'event', e)}
+                  onDragEnd={handleDragEnd}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleEditEvent(event);
                   }}
                   className={cn(
-                    "group/item flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-all duration-200",
-                    "bg-gradient-to-r hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
-                    "border-l-3 hover:border-l-4"
+                    "group/item flex items-center gap-2 p-1.5 rounded-md text-xs cursor-grab active:cursor-grabbing transition-all duration-200",
+                    "bg-gradient-to-r hover:shadow-sm border-l-2"
                   )}
                   style={{
                     backgroundColor: `${event.color}15`,
@@ -368,7 +417,7 @@ export const CalendarView = () => {
                     color: event.color
                   }}
                 >
-                  <GripVertical className="w-3 h-3 opacity-0 group-hover/item:opacity-60 transition-opacity" />
+                  <GripVertical className="w-3 h-3 opacity-50 group-hover/item:opacity-100 transition-opacity" />
                   <CalendarIcon className="w-3 h-3 flex-shrink-0" />
                   <span className="font-medium truncate flex-1">{event.title}</span>
                   {!event.is_all_day && (
@@ -382,24 +431,17 @@ export const CalendarView = () => {
                 <div
                   key={task.id}
                   draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('application/json', JSON.stringify({
-                      id: task.id,
-                      type: 'task',
-                      data: task
-                    }));
-                    startDrag(task.id, 'task', task);
-                  }}
+                  onDragStart={(e) => handleDragStart(task, 'task', e)}
+                  onDragEnd={handleDragEnd}
                   className={cn(
-                    "group/item flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-all duration-200",
-                    "bg-gradient-to-r hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
-                    "border-l-3 border-dashed hover:border-l-4",
+                    "group/item flex items-center gap-2 p-1.5 rounded-md text-xs cursor-grab active:cursor-grabbing transition-all duration-200",
+                    "bg-gradient-to-r hover:shadow-sm border-l-2 border-dashed",
                     task.status === 'complete' 
                       ? "bg-emerald-50 border-emerald-400 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" 
                       : "bg-amber-50 border-amber-400 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
                   )}
                 >
-                  <GripVertical className="w-3 h-3 opacity-0 group-hover/item:opacity-60 transition-opacity" />
+                  <GripVertical className="w-3 h-3 opacity-50 group-hover/item:opacity-100 transition-opacity" />
                   {task.status === 'complete' ? 
                     <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> :
                     <Circle className="w-3 h-3 flex-shrink-0" />
@@ -426,11 +468,14 @@ export const CalendarView = () => {
             </div>
           )}
 
-          {/* Drag overlay */}
-          {isDragging && isValidDrop && (
-            <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary/50 rounded-md flex items-center justify-center">
-              <div className="text-primary text-xs font-medium bg-background/80 px-2 py-1 rounded">
-                Drop here
+          {/* Drop Overlay */}
+          {isDragOver && isCurrentMonth && draggedItem && (
+            <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary/50 rounded-md flex items-center justify-center pointer-events-none">
+              <div className="text-primary text-sm font-medium bg-background/90 px-3 py-2 rounded-lg shadow-lg border border-primary/20">
+                <div className="flex items-center gap-2">
+                  {draggedItem.type === 'event' ? <CalendarIcon className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                  Drop {draggedItem.type} here
+                </div>
               </div>
             </div>
           )}
@@ -440,14 +485,13 @@ export const CalendarView = () => {
     }
 
     return (
-      <div className="bg-gradient-to-br from-background to-background/80 rounded-xl border border-border/60 overflow-hidden shadow-lg">
+      <div className="bg-gradient-to-br from-background to-background/80 rounded-xl border border-border/60 overflow-hidden shadow-sm">
         {/* Week headers */}
-        <div className="grid grid-cols-7 bg-gradient-to-r from-muted/50 to-muted/30 border-b border-border/40">
+        <div className="grid grid-cols-7 bg-gradient-to-r from-muted/30 to-muted/20 border-b border-border/40">
           {weekDays.map((dayName, index) => (
             <div key={dayName} className={cn(
-              "p-4 text-center font-semibold text-sm",
-              index === 0 || index === 6 ? "text-primary" : "text-foreground",
-              "bg-gradient-to-b from-transparent to-muted/20"
+              "p-3 text-center font-semibold text-sm",
+              index === 0 || index === 6 ? "text-primary" : "text-foreground"
             )}>
               <div className="flex items-center justify-center gap-2">
                 {index === 0 && <Sun className="w-4 h-4 text-amber-500" />}
@@ -480,7 +524,7 @@ export const CalendarView = () => {
   const selectedDateTasks = showTasks ? getTasksForDate(selectedDate) : [];
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-background to-muted/20 min-h-screen">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-background to-muted/10 min-h-screen">
       {/* Modern Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
