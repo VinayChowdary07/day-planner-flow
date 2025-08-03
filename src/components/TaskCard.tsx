@@ -43,144 +43,191 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-destructive/10 text-destructive border-destructive/20';
-      case 'medium': return 'bg-warning/10 text-warning border-warning/20';
-      case 'low': return 'bg-success/10 text-success border-success/20';
-      default: return 'bg-muted text-muted-foreground border-border';
+      case 'high': return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/30';
+      case 'medium': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/30';
+      case 'low': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/30';
+      default: return 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700';
     }
   };
 
-  const getStatusColor = (status: string) => {
-    return status === 'complete' 
-      ? 'bg-success/5 border-success/20 shadow-success/10' 
-      : 'bg-card border-border hover:shadow-md hover:border-border/60';
+  const getCardStyle = (status: string, priority: string) => {
+    if (status === 'complete') {
+      return 'bg-gradient-to-br from-green-50/50 to-emerald-50/30 border-green-200/60 dark:from-green-950/20 dark:to-emerald-950/10 dark:border-green-800/30 shadow-green-100/20 dark:shadow-green-950/20';
+    }
+    
+    switch (priority) {
+      case 'high':
+        return 'bg-gradient-to-br from-white to-red-50/20 border-red-100/40 dark:from-card dark:to-red-950/10 dark:border-red-900/20 shadow-red-100/10 dark:shadow-red-950/10';
+      case 'medium':
+        return 'bg-gradient-to-br from-white to-amber-50/20 border-amber-100/40 dark:from-card dark:to-amber-950/10 dark:border-amber-900/20 shadow-amber-100/10 dark:shadow-amber-950/10';
+      case 'low':
+        return 'bg-gradient-to-br from-white to-green-50/20 border-green-100/40 dark:from-card dark:to-green-950/10 dark:border-green-900/20 shadow-green-100/10 dark:shadow-green-950/10';
+      default:
+        return 'bg-gradient-to-br from-white to-gray-50/30 border-gray-200/60 dark:from-card dark:to-gray-800/10 dark:border-gray-700/40';
+    }
   };
 
   // Don't show subtasks for subtasks themselves
   const isSubtask = !!task.parent_task_id;
 
   return (
-    <Card className={`p-4 transition-all duration-300 ${getStatusColor(task.status)} ${
-      isDragging ? 'shadow-lg scale-105 rotate-1' : ''
-    } hover:shadow-md group`}>
-      <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
+    <Card className={`
+      relative overflow-hidden transition-all duration-500 ease-out
+      ${getCardStyle(task.status, task.priority)}
+      ${isDragging ? 'scale-105 rotate-1 shadow-2xl z-50' : 'hover:shadow-lg hover:shadow-primary/5'}
+      ${task.status === 'complete' ? 'opacity-75' : ''}
+      group border-l-4 ${
+        task.priority === 'high' ? 'border-l-red-400 dark:border-l-red-500' :
+        task.priority === 'medium' ? 'border-l-amber-400 dark:border-l-amber-500' :
+        task.priority === 'low' ? 'border-l-green-400 dark:border-l-green-500' :
+        'border-l-gray-300 dark:border-l-gray-600'
+      }
+    `}>
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
+      <div className="relative p-5 space-y-4">
+        {/* Header Section */}
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 pt-0.5">
             <Checkbox
               checked={task.status === 'complete'}
               onCheckedChange={() => onToggleComplete(task.id)}
-              className="mt-1 data-[state=checked]:bg-success data-[state=checked]:border-success transition-colors duration-200"
+              className="h-5 w-5 rounded-md border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-md hover:shadow-primary/20"
             />
-            <div className="flex-1 min-w-0">
-              <h3 className={`font-medium text-sm leading-5 transition-all duration-200 ${
-                task.status === 'complete' ? 'line-through text-muted-foreground' : 'text-foreground'
+          </div>
+          
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className={`font-semibold text-base leading-6 transition-all duration-300 ${
+                task.status === 'complete' 
+                  ? 'line-through text-muted-foreground/70' 
+                  : 'text-foreground group-hover:text-primary/90'
               }`}>
                 {task.title}
               </h3>
-              {task.description && (
-                <p className={`text-xs text-muted-foreground mt-1 transition-all duration-200 ${
-                  task.status === 'complete' ? 'line-through' : ''
-                }`}>
-                  {task.description}
-                </p>
-              )}
+              
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-medium px-2.5 py-1 transition-all duration-300 ${getPriorityColor(task.priority)} hover:shadow-sm`}
+                >
+                  {task.priority.toUpperCase()}
+                </Badge>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-primary/10 hover:text-primary rounded-full"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40 shadow-lg border-border/50">
+                    <DropdownMenuItem 
+                      onClick={() => onEdit(task)}
+                      className="cursor-pointer hover:bg-primary/5 transition-colors duration-200 gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit Task
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => onDelete(task.id)}
+                      className="text-destructive cursor-pointer hover:bg-destructive/10 transition-colors duration-200 gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Task
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-          </div>
-
-          <div className="flex items-start gap-2">
-            <Badge 
-              variant="outline" 
-              className={`text-xs transition-colors duration-200 ${getPriorityColor(task.priority)}`}
-            >
-              {task.priority}
-            </Badge>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-muted"
-                >
-                  <MoreVertical className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36">
-                <DropdownMenuItem 
-                  onClick={() => onEdit(task)}
-                  className="cursor-pointer hover:bg-muted transition-colors duration-200"
-                >
-                  <Edit className="h-3 w-3 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete(task.id)}
-                  className="text-destructive cursor-pointer hover:bg-destructive/10 transition-colors duration-200"
-                >
-                  <Trash2 className="h-3 w-3 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {task.description && (
+              <p className={`text-sm leading-5 transition-all duration-300 ${
+                task.status === 'complete' 
+                  ? 'line-through text-muted-foreground/60' 
+                  : 'text-muted-foreground'
+              }`}>
+                {task.description}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/30 rounded-md">
-            <Calendar className="h-3 w-3" />
-            <span className="font-medium">{formatDate(task.task_date)}</span>
+        {/* Metadata Section */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-full text-xs font-medium text-primary hover:bg-primary/10 transition-colors duration-200">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>{formatDate(task.task_date)}</span>
           </div>
           
           {task.start_time && (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/30 rounded-md">
-              <Clock className="h-3 w-3" />
-              <span>{task.start_time}</span>
-              {task.end_time && <span>- {task.end_time}</span>}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200/60 rounded-full text-xs font-medium text-blue-700 dark:bg-blue-950/30 dark:border-blue-800/30 dark:text-blue-400">
+              <Clock className="h-3.5 w-3.5" />
+              <span>
+                {task.start_time}
+                {task.end_time && <span className="text-blue-500 dark:text-blue-400"> - {task.end_time}</span>}
+              </span>
             </div>
           )}
           
           {task.location && (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-muted/30 rounded-md">
-              <MapPin className="h-3 w-3" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200/60 rounded-full text-xs font-medium text-purple-700 dark:bg-purple-950/30 dark:border-purple-800/30 dark:text-purple-400">
+              <MapPin className="h-3.5 w-3.5" />
               <span className="truncate max-w-24">{task.location}</span>
             </div>
           )}
           
           {task.recurrence && task.recurrence !== 'none' && (
-            <Badge variant="secondary" className="text-xs px-2 py-1">
-              {task.recurrence}
+            <Badge 
+              variant="secondary" 
+              className="text-xs px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border-indigo-200/60 dark:from-indigo-950/30 dark:to-purple-950/30 dark:text-indigo-400 dark:border-indigo-800/30"
+            >
+              🔄 {task.recurrence}
             </Badge>
           )}
         </div>
 
+        {/* Tags Section */}
         {task.tags && task.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {task.tags.slice(0, 3).map((tag, index) => (
+          <div className="flex flex-wrap gap-2">
+            {task.tags.slice(0, 4).map((tag, index) => (
               <Badge 
                 key={index} 
                 variant="outline" 
-                className="text-xs flex items-center gap-1 px-2 py-1 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 transition-colors duration-200"
+                className="text-xs flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border-emerald-200/60 hover:from-emerald-100 hover:to-teal-100 transition-all duration-200 dark:from-emerald-950/20 dark:to-teal-950/20 dark:text-emerald-400 dark:border-emerald-800/30"
               >
-                <Tag className="h-2 w-2" />
+                <Tag className="h-2.5 w-2.5" />
                 {tag}
               </Badge>
             ))}
-            {task.tags.length > 3 && (
+            {task.tags.length > 4 && (
               <Badge 
                 variant="outline" 
-                className="text-xs px-2 py-1 bg-muted/50 text-muted-foreground border-border hover:bg-muted transition-colors duration-200"
+                className="text-xs px-2.5 py-1 bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 transition-colors duration-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-800"
               >
-                +{task.tags.length - 3}
+                +{task.tags.length - 4} more
               </Badge>
             )}
           </div>
         )}
 
         {/* Subtask Progress */}
-        {!isSubtask && <SubtaskProgress progress={progress} />}
+        {!isSubtask && progress?.has_subtasks && (
+          <div className="border-t border-border/40 pt-4">
+            <SubtaskProgress progress={progress} />
+          </div>
+        )}
 
         {/* Subtask List */}
-        {!isSubtask && <SubtaskList parentTaskId={task.id} />}
+        {!isSubtask && (
+          <div className="border-t border-border/30 pt-3">
+            <SubtaskList parentTaskId={task.id} />
+          </div>
+        )}
       </div>
     </Card>
   );
