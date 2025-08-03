@@ -9,13 +9,31 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { CalendarDays, Clock, MapPin, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Filter } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO, isSameMonth, isAfter, isBefore } from 'date-fns';
+import { 
+  Calendar as CalendarIcon, 
+  Clock, 
+  MapPin, 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight, 
+  Edit, 
+  Trash2, 
+  Filter,
+  Sun,
+  Moon,
+  Star,
+  CheckCircle2,
+  Circle,
+  GripVertical,
+  Sparkles
+} from 'lucide-react';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, parseISO, isSameMonth, isAfter, isBefore, isToday } from 'date-fns';
 import { useInAppCalendar } from '@/hooks/useInAppCalendar';
 import { useTasks } from '@/hooks/useTasks';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { CalendarItem } from '@/components/CalendarItem';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface CalendarEvent {
   id: string;
@@ -46,7 +64,6 @@ interface EventFormData {
 export const CalendarView = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [view, setView] = useState<'month' | 'week'>('month');
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [showTasks, setShowTasks] = useState(true);
@@ -59,7 +76,7 @@ export const CalendarView = () => {
     location: '',
     is_all_day: false,
     recurrence_type: 'none',
-    color: '#3B82F6',
+    color: '#6366F1',
   });
 
   const { events, loading, fetchEvents, createEvent, updateEvent, deleteEvent } = useInAppCalendar();
@@ -113,7 +130,7 @@ export const CalendarView = () => {
       location: event.location || '',
       is_all_day: event.is_all_day,
       recurrence_type: event.recurrence_type || 'none',
-      color: event.color || '#3B82F6',
+      color: event.color || '#6366F1',
     });
     setShowEventDialog(true);
   };
@@ -138,7 +155,7 @@ export const CalendarView = () => {
       location: '',
       is_all_day: false,
       recurrence_type: 'none',
-      color: '#3B82F6',
+      color: '#6366F1',
     });
   };
 
@@ -194,7 +211,6 @@ export const CalendarView = () => {
     
     let dragData = null;
     
-    // Try to get drag data from dataTransfer first
     try {
       const jsonData = e.dataTransfer.getData('application/json');
       if (jsonData) {
@@ -205,7 +221,6 @@ export const CalendarView = () => {
       console.log('No JSON data found in drag transfer');
     }
     
-    // Fallback to draggedItem from hook
     if (!dragData && draggedItem) {
       dragData = draggedItem;
       console.log('Using draggedItem from hook:', dragData);
@@ -252,28 +267,31 @@ export const CalendarView = () => {
     const days = [];
     let day = calendarStart;
 
+    const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
     while (day <= calendarEnd) {
       const dayEvents = showEvents ? getEventsForDate(day) : [];
       const dayTasks = showTasks ? getTasksForDate(day) : [];
       const isCurrentMonth = isDateInCurrentMonth(day);
       const isSelected = isSameDay(day, selectedDate);
-      const isToday = isSameDay(day, new Date());
+      const isTodayDate = isToday(day);
       const isValidDrop = isValidDropTarget(day);
+      const totalItems = dayEvents.length + dayTasks.length;
 
       days.push(
         <div
           key={day.toString()}
-          className={`
-            min-h-[120px] border border-border p-2 transition-all duration-200 calendar-day
-            ${isCurrentMonth 
-              ? 'bg-background hover:bg-accent/50 cursor-pointer' 
-              : 'bg-muted/20 cursor-not-allowed opacity-30'
-            }
-            ${isSelected && isCurrentMonth ? 'bg-primary/10 border-primary' : ''}
-            ${isToday && isCurrentMonth ? 'ring-2 ring-primary ring-offset-2' : ''}
-            ${isDragging && isValidDrop ? 'border-2 border-dashed border-primary/50 bg-primary/5' : ''}
-            ${isDragging && !isValidDrop ? 'border-2 border-dashed border-destructive/50 bg-destructive/5' : ''}
-          `}
+          className={cn(
+            "relative min-h-[140px] border transition-all duration-300 group cursor-pointer",
+            "bg-gradient-to-br from-background to-background/50",
+            isCurrentMonth 
+              ? "border-border/60 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5" 
+              : "border-border/20 bg-muted/10 cursor-not-allowed opacity-40",
+            isSelected && isCurrentMonth && "ring-2 ring-primary/50 border-primary/60 bg-gradient-to-br from-primary/5 to-primary/10",
+            isTodayDate && isCurrentMonth && "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800",
+            isDragging && isValidDrop && "border-2 border-dashed border-primary/60 bg-gradient-to-br from-primary/10 to-primary/5",
+            isDragging && !isValidDrop && "border-2 border-dashed border-destructive/50 bg-destructive/5",
+          )}
           onClick={() => handleDateClick(day)}
           onDragOver={(e) => {
             if (isCurrentMonth) {
@@ -285,42 +303,135 @@ export const CalendarView = () => {
               handleDropOnDate(day, e);
             }
           }}
-          style={{
-            pointerEvents: isCurrentMonth ? 'auto' : 'none'
-          }}
         >
-          <div className={`text-sm font-medium mb-1 ${
-            isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'
-          } ${isToday && isCurrentMonth ? 'text-primary font-bold' : ''}`}>
-            {format(day, 'd')}
+          {/* Date Header */}
+          <div className={cn(
+            "flex items-center justify-between p-2 pb-1",
+            isCurrentMonth ? "text-foreground" : "text-muted-foreground"
+          )}>
+            <div className={cn(
+              "flex items-center gap-2",
+              isTodayDate && isCurrentMonth && "font-bold"
+            )}>
+              <span className={cn(
+                "text-sm font-medium",
+                isTodayDate && isCurrentMonth && "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-xs"
+              )}>
+                {format(day, 'd')}
+              </span>
+              {isTodayDate && isCurrentMonth && (
+                <Sun className="w-3 h-3 text-amber-500" />
+              )}
+            </div>
+            
+            {totalItems > 0 && (
+              <Badge 
+                variant="secondary" 
+                className={cn(
+                  "text-xs px-1.5 py-0.5 bg-primary/10 text-primary border-primary/20",
+                  totalItems > 3 && "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400"
+                )}
+              >
+                {totalItems}
+              </Badge>
+            )}
           </div>
+
+          {/* Items Container */}
           {isCurrentMonth && (
-            <div className="space-y-1 drag-container">
+            <div className="px-2 pb-2 space-y-1 flex-1 overflow-hidden">
+              {/* Events */}
               {dayEvents.slice(0, 2).map((event) => (
-                <CalendarItem
+                <div
                   key={event.id}
-                  item={event}
-                  type="event"
-                  onClick={() => handleEditEvent(event)}
-                  onDragStart={startDrag}
-                  className="draggable-item"
-                />
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                      id: event.id,
+                      type: 'event',
+                      data: event
+                    }));
+                    startDrag(event.id, 'event', event);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditEvent(event);
+                  }}
+                  className={cn(
+                    "group/item flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-all duration-200",
+                    "bg-gradient-to-r hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+                    "border-l-3 hover:border-l-4"
+                  )}
+                  style={{
+                    backgroundColor: `${event.color}15`,
+                    borderLeftColor: event.color,
+                    color: event.color
+                  }}
+                >
+                  <GripVertical className="w-3 h-3 opacity-0 group-hover/item:opacity-60 transition-opacity" />
+                  <CalendarIcon className="w-3 h-3 flex-shrink-0" />
+                  <span className="font-medium truncate flex-1">{event.title}</span>
+                  {!event.is_all_day && (
+                    <Clock className="w-3 h-3 opacity-60" />
+                  )}
+                </div>
               ))}
+
+              {/* Tasks */}
               {dayTasks.slice(0, 2).map((task) => (
-                <CalendarItem
+                <div
                   key={task.id}
-                  item={task}
-                  type="task"
-                  onClick={() => {/* Task editing will be handled by existing task components */}}
-                  onDragStart={startDrag}
-                  className="draggable-item"
-                />
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                      id: task.id,
+                      type: 'task',
+                      data: task
+                    }));
+                    startDrag(task.id, 'task', task);
+                  }}
+                  className={cn(
+                    "group/item flex items-center gap-2 p-1.5 rounded-md text-xs cursor-pointer transition-all duration-200",
+                    "bg-gradient-to-r hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+                    "border-l-3 border-dashed hover:border-l-4",
+                    task.status === 'complete' 
+                      ? "bg-emerald-50 border-emerald-400 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" 
+                      : "bg-amber-50 border-amber-400 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
+                  )}
+                >
+                  <GripVertical className="w-3 h-3 opacity-0 group-hover/item:opacity-60 transition-opacity" />
+                  {task.status === 'complete' ? 
+                    <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> :
+                    <Circle className="w-3 h-3 flex-shrink-0" />
+                  }
+                  <span className={cn(
+                    "font-medium truncate flex-1",
+                    task.status === 'complete' && "line-through opacity-75"
+                  )}>
+                    {task.title}
+                  </span>
+                  {task.priority === 'high' && (
+                    <Star className="w-3 h-3 text-red-500 fill-current" />
+                  )}
+                </div>
               ))}
-              {(dayEvents.length + dayTasks.length) > 2 && (
-                <div className="text-xs text-muted-foreground bg-muted/50 rounded px-1 py-0.5">
-                  +{(dayEvents.length + dayTasks.length) - 2} more
+
+              {/* More items indicator */}
+              {totalItems > 2 && (
+                <div className="text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1 text-center border border-dashed border-muted-foreground/30">
+                  <Sparkles className="w-3 h-3 inline mr-1" />
+                  +{totalItems - 2} more
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Drag overlay */}
+          {isDragging && isValidDrop && (
+            <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary/50 rounded-md flex items-center justify-center">
+              <div className="text-primary text-xs font-medium bg-background/80 px-2 py-1 rounded">
+                Drop here
+              </div>
             </div>
           )}
         </div>,
@@ -329,99 +440,29 @@ export const CalendarView = () => {
     }
 
     return (
-      <div className="grid grid-cols-7 gap-0 border border-border rounded-lg overflow-hidden">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-          <div key={day} className="p-3 text-center font-medium bg-muted/50 border-b border-border">
-            {day}
-          </div>
-        ))}
-        {days}
-        <style>{`
-          .calendar-day .draggable-item {
-            pointer-events: auto;
-          }
-          .calendar-day .draggable-item:focus,
-          .calendar-day .draggable-item:active {
-            outline: none !important;
-            border-color: currentColor !important;
-          }
-          .calendar-day .draggable-item[draggable="true"] {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            outline: none !important;
-          }
-          .calendar-day .draggable-item.dragging {
-            border-color: hsl(var(--primary)) !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-            background: hsl(var(--primary) / 0.1) !important;
-            transform: scale(1.02);
-            z-index: 1000;
-          }
-          .calendar-day {
-            position: relative;
-          }
-          .calendar-day .drag-container {
-            position: relative;
-            z-index: 1;
-          }
-        `}</style>
-      </div>
-    );
-  };
-
-  const renderWeekView = () => {
-    const weekStart = startOfWeek(selectedDate);
-    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-    return (
-      <div className="grid grid-cols-7 gap-2">
-        {weekDays.map((day) => {
-          const dayEvents = showEvents ? getEventsForDate(day) : [];
-          const dayTasks = showTasks ? getTasksForDate(day) : [];
-          const isToday = isSameDay(day, new Date());
-          const isValidDrop = isValidDropTarget(day);
-
-          return (
-            <div 
-              key={day.toString()} 
-              className={`border border-border rounded-lg p-3 min-h-[200px] ${
-                isDragging && isValidDrop ? 'border-2 border-dashed border-primary bg-primary/5' : ''
-              } ${
-                isDragging && !isValidDrop ? 'border-2 border-dashed border-destructive/50 bg-destructive/5' : ''
-              }`}
-              onDragOver={(e) => handleDragOver(e, day)}
-              onDrop={(e) => handleDropOnDate(day, e)}
-            >
-              <div className={`text-sm font-medium mb-2 ${
-                isToday ? 'text-primary font-bold' : 'text-foreground'
-              }`}>
-                {format(day, 'EEE d')}
-              </div>
-              <div className="space-y-2">
-                {dayEvents.map((event) => (
-                  <CalendarItem
-                    key={event.id}
-                    item={event}
-                    type="event"
-                    onClick={() => handleEditEvent(event)}
-                    onDragStart={startDrag}
-                  />
-                ))}
-                {dayTasks.map((task) => (
-                  <CalendarItem
-                    key={task.id}
-                    item={task}
-                    type="task"
-                    onClick={() => {/* Task editing will be handled by existing task components */}}
-                    onDragStart={startDrag}
-                  />
-                ))}
+      <div className="bg-gradient-to-br from-background to-background/80 rounded-xl border border-border/60 overflow-hidden shadow-lg">
+        {/* Week headers */}
+        <div className="grid grid-cols-7 bg-gradient-to-r from-muted/50 to-muted/30 border-b border-border/40">
+          {weekDays.map((dayName, index) => (
+            <div key={dayName} className={cn(
+              "p-4 text-center font-semibold text-sm",
+              index === 0 || index === 6 ? "text-primary" : "text-foreground",
+              "bg-gradient-to-b from-transparent to-muted/20"
+            )}>
+              <div className="flex items-center justify-center gap-2">
+                {index === 0 && <Sun className="w-4 h-4 text-amber-500" />}
+                {index === 6 && <Moon className="w-4 h-4 text-indigo-500" />}
+                <span className="hidden sm:inline">{dayName}</span>
+                <span className="sm:hidden">{dayName.slice(0, 3)}</span>
               </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+        
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7">
+          {days}
+        </div>
       </div>
     );
   };
@@ -430,7 +471,6 @@ export const CalendarView = () => {
     const newMonth = new Date(currentMonth);
     newMonth.setMonth(currentMonth.getMonth() + (direction === 'next' ? 1 : -1));
     setCurrentMonth(newMonth);
-    // Reset selected date to first day of new month if it's outside the new month
     if (!isSameMonth(selectedDate, newMonth)) {
       setSelectedDate(startOfMonth(newMonth));
     }
@@ -440,53 +480,55 @@ export const CalendarView = () => {
   const selectedDateTasks = showTasks ? getTasksForDate(selectedDate) : [];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8 p-6 bg-gradient-to-br from-background to-muted/20 min-h-screen">
+      {/* Modern Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Calendar</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setView('month')}
-              className={view === 'month' ? 'bg-primary text-primary-foreground' : ''}
-            >
-              Month
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setView('week')}
-              className={view === 'week' ? 'bg-primary text-primary-foreground' : ''}
-            >
-              Week
-            </Button>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg">
+              <CalendarIcon className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Calendar
+              </h1>
+              <p className="text-sm text-muted-foreground">Manage your events and tasks</p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           {/* Filter Controls */}
-          <div className="flex items-center gap-2 mr-4">
-            <Filter className="h-4 w-4" />
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-4 p-3 bg-card/60 backdrop-blur-sm border border-border/60 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Show:</span>
+            </div>
+            <div className="flex items-center gap-2">
               <Switch
                 id="show-events"
                 checked={showEvents}
                 onCheckedChange={setShowEvents}
+                className="data-[state=checked]:bg-primary"
               />
-              <Label htmlFor="show-events" className="text-sm">Events</Label>
+              <Label htmlFor="show-events" className="text-sm font-medium cursor-pointer">
+                Events
+              </Label>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Switch
                 id="show-tasks"
                 checked={showTasks}
                 onCheckedChange={setShowTasks}
+                className="data-[state=checked]:bg-primary"
               />
-              <Label htmlFor="show-tasks" className="text-sm">Tasks</Label>
+              <Label htmlFor="show-tasks" className="text-sm font-medium cursor-pointer">
+                Tasks
+              </Label>
             </div>
           </div>
 
+          {/* Add Event Button */}
           <Dialog open={showEventDialog} onOpenChange={(open) => {
             setShowEventDialog(open);
             if (!open) {
@@ -495,14 +537,17 @@ export const CalendarView = () => {
             }
           }}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="lg" className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300">
+                <Plus className="h-5 w-5 mr-2" />
                 Add Event
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border border-border/60">
               <DialogHeader>
-                <DialogTitle>{editingEvent ? 'Edit Event' : 'Create New Event'}</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5 text-primary" />
+                  {editingEvent ? 'Edit Event' : 'Create New Event'}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -605,56 +650,85 @@ export const CalendarView = () => {
         </div>
       </div>
 
-      {/* Calendar Navigation */}
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => navigateMonth('prev')} disabled={loading}>
+      {/* Modern Calendar Navigation */}
+      <div className="flex items-center justify-between p-4 bg-card/60 backdrop-blur-sm border border-border/60 rounded-xl shadow-sm">
+        <Button 
+          variant="outline" 
+          onClick={() => navigateMonth('prev')} 
+          disabled={loading}
+          className="hover:bg-primary/10 hover:border-primary/40 transition-all duration-300"
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
-        <h2 className="text-lg font-semibold">{format(currentMonth, 'MMMM yyyy')}</h2>
+        <h2 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          {format(currentMonth, 'MMMM yyyy')}
+        </h2>
 
-        <Button variant="outline" onClick={() => navigateMonth('next')} disabled={loading}>
+        <Button 
+          variant="outline" 
+          onClick={() => navigateMonth('next')} 
+          disabled={loading}
+          className="hover:bg-primary/10 hover:border-primary/40 transition-all duration-300"
+        >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Calendar Content */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading calendar...</p>
-            </div>
-          ) : (
-            <div className="p-4">{view === 'month' ? renderMonthView() : renderWeekView()}</div>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? (
+        <Card className="bg-card/60 backdrop-blur-sm border border-border/60">
+          <CardContent className="p-12 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent mx-auto mb-6"></div>
+            <p className="text-muted-foreground font-medium">Loading calendar...</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div>{renderMonthView()}</div>
+      )}
 
-      {/* Events and Tasks for Selected Date */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" />
-            Items for {format(selectedDate, 'MMMM d, yyyy')}
+      {/* Selected Date Details */}
+      <Card className="bg-card/60 backdrop-blur-sm border border-border/60 shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+              <CalendarIcon className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">
+                {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {selectedDateEvents.length + selectedDateTasks.length} items scheduled
+              </p>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {selectedDateEvents.length === 0 && selectedDateTasks.length === 0 ? (
-            <p className="text-muted-foreground">No events or tasks for this date</p>
+            <div className="text-center py-8">
+              <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-muted-foreground">No events or tasks for this date</p>
+            </div>
           ) : (
             <div className="space-y-3">
+              {/* Events */}
               {selectedDateEvents.map((event) => (
-                <div key={event.id} className="flex items-start gap-3 p-3 border border-border rounded-lg">
+                <div key={event.id} className="group flex items-start gap-3 p-4 border border-border/40 rounded-lg bg-gradient-to-r from-background to-muted/20 hover:shadow-md transition-all duration-300">
                   <div
-                    className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
+                    className="w-4 h-4 rounded-full mt-1 flex-shrink-0 shadow-sm"
                     style={{ backgroundColor: event.color }}
                   />
-                  <div className="flex-1">
-                    <h4 className="font-medium">{event.title}</h4>
-                    {event.description && <p className="text-sm text-muted-foreground mt-1">{event.description}</p>}
-                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {event.title}
+                    </h4>
+                    {event.description && (
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                        {event.description}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                       {!event.is_all_day && (
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -664,16 +738,17 @@ export const CalendarView = () => {
                       {event.location && (
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {event.location}
+                          <span className="truncate">{event.location}</span>
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleEditEvent(event)}
+                      className="hover:bg-primary/10"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -681,22 +756,34 @@ export const CalendarView = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteEvent(event.id)}
+                      className="hover:bg-destructive/10 hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               ))}
+
+              {/* Tasks */}
               {selectedDateTasks.map((task) => (
-                <div key={task.id} className="flex items-start gap-3 p-3 border border-dashed border-border rounded-lg bg-muted/30">
-                  <div
-                    className="w-3 h-3 rounded-full mt-1 flex-shrink-0"
-                    style={{ backgroundColor: task.status === 'complete' ? '#10b981' : '#f59e0b' }}
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium">{task.title}</h4>
-                    {task.description && <p className="text-sm text-muted-foreground mt-1">{task.description}</p>}
-                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                <div key={task.id} className="group flex items-start gap-3 p-4 border border-dashed border-border/40 rounded-lg bg-gradient-to-r from-background to-muted/10 hover:shadow-md transition-all duration-300">
+                  <div className={cn(
+                    "w-4 h-4 rounded-full mt-1 flex-shrink-0 shadow-sm",
+                    task.status === 'complete' ? "bg-emerald-500" : "bg-amber-500"
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <h4 className={cn(
+                      "font-semibold group-hover:text-primary transition-colors",
+                      task.status === 'complete' && "line-through opacity-75"
+                    )}>
+                      {task.title}
+                    </h4>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                        {task.description}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                       {task.start_time && (
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -706,12 +793,25 @@ export const CalendarView = () => {
                       {task.location && (
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {task.location}
+                          <span className="truncate">{task.location}</span>
                         </div>
                       )}
-                      <Badge variant={task.status === 'complete' ? 'default' : 'secondary'}>
+                      <Badge 
+                        variant={task.status === 'complete' ? 'default' : 'secondary'}
+                        className={cn(
+                          task.status === 'complete' 
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400" 
+                            : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400"
+                        )}
+                      >
                         {task.status}
                       </Badge>
+                      {task.priority === 'high' && (
+                        <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400">
+                          <Star className="w-3 h-3 mr-1 fill-current" />
+                          High Priority
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
