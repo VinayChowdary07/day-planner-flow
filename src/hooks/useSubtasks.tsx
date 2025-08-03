@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/types/task';
@@ -71,8 +72,10 @@ export const useSubtasks = (parentTaskId?: string) => {
   useEffect(() => {
     if (!user || !parentTaskId) return;
 
+    console.log('Setting up real-time subscription for subtasks of parent:', parentTaskId);
+    
     const channel = supabase
-      .channel(`subtasks-${parentTaskId}`)
+      .channel(`subtasks-${parentTaskId}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -82,17 +85,19 @@ export const useSubtasks = (parentTaskId?: string) => {
           filter: `parent_task_id=eq.${parentTaskId}`,
         },
         (payload) => {
-          console.log('Subtask real-time update:', payload);
+          console.log('Subtask real-time update received:', payload);
           
           if (payload.eventType === 'INSERT') {
             const newSubtask = payload.new as Task;
+            console.log('New subtask inserted:', newSubtask);
             setSubtasks(prev => {
-              const updated = [newSubtask, ...prev];
+              const updated = [...prev, newSubtask].sort((a, b) => a.order_position - b.order_position);
               calculateProgress(updated);
               return updated;
             });
           } else if (payload.eventType === 'UPDATE') {
             const updatedSubtask = payload.new as Task;
+            console.log('Subtask updated:', updatedSubtask);
             setSubtasks(prev => {
               const updated = prev.map(task => 
                 task.id === updatedSubtask.id ? updatedSubtask : task
@@ -102,6 +107,7 @@ export const useSubtasks = (parentTaskId?: string) => {
             });
           } else if (payload.eventType === 'DELETE') {
             const deletedSubtask = payload.old as Task;
+            console.log('Subtask deleted:', deletedSubtask);
             setSubtasks(prev => {
               const updated = prev.filter(task => task.id !== deletedSubtask.id);
               calculateProgress(updated);
@@ -110,9 +116,12 @@ export const useSubtasks = (parentTaskId?: string) => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subtask subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up subtask subscription');
       supabase.removeChannel(channel);
     };
   }, [user, parentTaskId, calculateProgress]);
@@ -121,6 +130,8 @@ export const useSubtasks = (parentTaskId?: string) => {
     if (!user || !parentTaskId || !subtaskData.title) return;
 
     try {
+      console.log('Creating subtask for parent:', parentTaskId);
+      
       const { data, error } = await supabase
         .from('tasks')
         .insert({
@@ -140,6 +151,16 @@ export const useSubtasks = (parentTaskId?: string) => {
 
       if (error) throw error;
 
+      console.log('Subtask created successfully:', data);
+
+      // Immediately update local state for instant feedback
+      const newSubtask = data as Task;
+      setSubtasks(prev => {
+        const updated = [...prev, newSubtask].sort((a, b) => a.order_position - b.order_position);
+        calculateProgress(updated);
+        return updated;
+      });
+
       toast({
         title: 'Success',
         description: 'Subtask created successfully',
@@ -158,6 +179,8 @@ export const useSubtasks = (parentTaskId?: string) => {
 
   const updateSubtask = async (subtaskId: string, updates: Partial<Task>) => {
     try {
+      console.log('Updating subtask:', subtaskId, updates);
+      
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
@@ -166,6 +189,18 @@ export const useSubtasks = (parentTaskId?: string) => {
         .single();
 
       if (error) throw error;
+
+      console.log('Subtask updated successfully:', data);
+
+      // Immediately update local state for instant feedback
+      const updatedSubtask = data as Task;
+      setSubtasks(prev => {
+        const updated = prev.map(task => 
+          task.id === updatedSubtask.id ? updatedSubtask : task
+        );
+        calculateProgress(updated);
+        return updated;
+      });
 
       toast({
         title: 'Success',
@@ -185,12 +220,23 @@ export const useSubtasks = (parentTaskId?: string) => {
 
   const deleteSubtask = async (subtaskId: string) => {
     try {
+      console.log('Deleting subtask:', subtaskId);
+      
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', subtaskId);
 
       if (error) throw error;
+
+      console.log('Subtask deleted successfully:', subtaskId);
+
+      // Immediately update local state for instant feedback
+      setSubtasks(prev => {
+        const updated = prev.filter(task => task.id !== subtaskId);
+        calculateProgress(updated);
+        return updated;
+      });
 
       toast({
         title: 'Success',
