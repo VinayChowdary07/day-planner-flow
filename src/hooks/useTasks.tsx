@@ -1,14 +1,15 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskFilters } from '@/types/task';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useGamification } from '@/hooks/useGamification';
 
 export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { awardXP } = useGamification();
 
   const fetchTasks = useCallback(async () => {
     if (!user) {
@@ -325,7 +326,18 @@ export const useTasks = () => {
     const newStatus = task.status === 'complete' ? 'incomplete' : 'complete';
     console.log('Toggling task status:', id, 'from', task.status, 'to', newStatus);
     
-    return updateTask(id, { status: newStatus });
+    const result = await updateTask(id, { status: newStatus });
+    
+    // Award XP if task was just completed
+    if (newStatus === 'complete' && result) {
+      try {
+        await awardXP(task.priority as 'low' | 'medium' | 'high');
+      } catch (error) {
+        console.error('Error awarding XP:', error);
+      }
+    }
+    
+    return result;
   };
 
   const reorderTasks = async (reorderedTasks: Task[]) => {

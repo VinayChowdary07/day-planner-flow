@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +6,9 @@ import { useProjects } from '@/hooks/useProjects';
 import { useGoals } from '@/hooks/useGoals';
 import { ProductivityChart } from './ProductivityChart';
 import { RecentActivity } from './RecentActivity';
+import { GameStats } from './GameStats';
+import { AchievementsBadges } from './AchievementsBadges';
+import { StreakIndicator } from './StreakIndicator';
 import { 
   CheckCircle, 
   Clock, 
@@ -108,7 +110,10 @@ export const AnalyticsDashboard = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+            <StreakIndicator />
+          </div>
           <p className="text-muted-foreground">Real-time productivity insights and comprehensive statistics</p>
         </div>
         <Badge variant="outline" className="text-xs">
@@ -116,6 +121,9 @@ export const AnalyticsDashboard = () => {
           Live Updates
         </Badge>
       </div>
+
+      {/* Gamification Stats */}
+      <GameStats />
 
       {/* Top Highlight Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -233,7 +241,7 @@ export const AnalyticsDashboard = () => {
         </Card>
       </div>
 
-      {/* Charts and Activity */}
+      {/* Charts, Activity, and Achievements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -259,6 +267,9 @@ export const AnalyticsDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Achievements Section */}
+      <AchievementsBadges />
     </div>
   );
 };
