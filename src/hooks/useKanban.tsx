@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Task } from '@/types/task';
 import { useTasks } from '@/hooks/useTasks';
@@ -19,11 +18,21 @@ export const useKanban = (projectId?: string) => {
     ? tasks.filter(task => task.project_id === projectId)
     : tasks;
 
-  // Map task status to kanban columns
+  // Map task status to kanban columns - updated logic
   const getKanbanStatus = (task: Task): KanbanColumn => {
     if (task.status === 'complete') return 'done';
-    // Use category or priority to determine initial column placement
-    if (task.priority === 'high' || task.category === 'work') return 'in-progress';
+    
+    // Check if task has been explicitly moved to a kanban column
+    // We'll use a combination of status and a custom field approach
+    if (task.status === 'incomplete') {
+      // If priority is high and category suggests active work, put in progress
+      if (task.priority === 'high' && (task.category === 'work' || task.category === 'urgent')) {
+        return 'in-progress';
+      }
+      // Otherwise, default to todo for incomplete tasks
+      return 'todo';
+    }
+    
     return 'todo';
   };
 
@@ -46,15 +55,18 @@ export const useKanban = (projectId?: string) => {
     try {
       const updates: Partial<Task> = {};
       
-      // Update task status based on column
+      // Update task status and properties based on column
       if (newColumn === 'done') {
         updates.status = 'complete';
-      } else {
+      } else if (newColumn === 'in-progress') {
         updates.status = 'incomplete';
-        // Optionally update priority or category based on column
-        if (newColumn === 'in-progress') {
-          updates.priority = 'high';
-        }
+        updates.priority = 'high';
+        updates.category = 'work'; // Set category to indicate active work
+      } else if (newColumn === 'todo') {
+        updates.status = 'incomplete';
+        // Reset priority to medium and category to general for todo items
+        updates.priority = 'medium';
+        updates.category = 'general';
       }
 
       await updateTask(taskId, updates);
