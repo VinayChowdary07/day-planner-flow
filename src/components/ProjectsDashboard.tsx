@@ -3,12 +3,14 @@ import { useState } from 'react';
 import { useProjects } from '@/hooks/useProjects';
 import { ProjectCard } from '@/components/ProjectCard';
 import { ProjectForm } from '@/components/ProjectForm';
+import { KanbanBoard } from '@/components/KanbanBoard';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Project, ProjectFilters } from '@/types/project';
-import { Search, FolderOpen, Filter, Plus, CheckCircle, Clock, Archive } from 'lucide-react';
+import { Search, FolderOpen, Filter, CheckCircle, Clock, Archive, Kanban } from 'lucide-react';
 
 export const ProjectsDashboard = () => {
   const { projects, loading, filterProjects } = useProjects();
@@ -17,6 +19,7 @@ export const ProjectsDashboard = () => {
     search: '',
     status: 'all',
   });
+  const [activeTab, setActiveTab] = useState<'overview' | 'kanban'>('overview');
 
   const filteredProjects = filterProjects(filters);
 
@@ -88,79 +91,99 @@ export const ProjectsDashboard = () => {
         </Card>
       </div>
 
-      {/* Filters Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search projects..."
-                className="pl-10"
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              />
-            </div>
-            
-            <Select
-              value={filters.status}
-              onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'overview' | 'kanban')}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="kanban" className="flex items-center gap-2">
+            <Kanban className="h-4 w-4" />
+            Task Board
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Projects Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Your Projects</CardTitle>
-            <Badge variant="outline" className="text-sm">
-              {filteredProjects.length} of {totalProjects} projects
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredProjects.length === 0 ? (
-            <div className="text-center py-12">
-              <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                {projects.length === 0 ? 'No projects yet' : 'No projects match your filters'}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {projects.length === 0 ? 'Create your first project to get started' : 'Try adjusting your search criteria'}
-              </p>
-              {projects.length === 0 && <ProjectForm onSuccess={() => setSelectedProject(null)} />}
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onEdit={setSelectedProject}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Filters Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Search projects..."
+                    className="pl-10"
+                    value={filters.search}
+                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                  />
+                </div>
+                
+                <Select
+                  value={filters.status}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Projects Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Your Projects</CardTitle>
+                <Badge variant="outline" className="text-sm">
+                  {filteredProjects.length} of {totalProjects} projects
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredProjects.length === 0 ? (
+                <div className="text-center py-12">
+                  <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                    {projects.length === 0 ? 'No projects yet' : 'No projects match your filters'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {projects.length === 0 ? 'Create your first project to get started' : 'Try adjusting your search criteria'}
+                  </p>
+                  {projects.length === 0 && <ProjectForm onSuccess={() => setSelectedProject(null)} />}
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredProjects.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onEdit={setSelectedProject}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="kanban" className="space-y-6">
+          <KanbanBoard />
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Project Modal */}
       {selectedProject && (
