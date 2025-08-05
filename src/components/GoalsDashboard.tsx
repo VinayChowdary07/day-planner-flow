@@ -202,12 +202,12 @@ export const GoalsDashboard = () => {
   }
 
   return (
-    <div className="space-y-6 bg-slate-950 min-h-screen">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Goals Dashboard</h1>
-          <p className="text-slate-400 mt-1">Track your progress and achieve your objectives</p>
+          <h1 className="text-3xl font-bold tracking-tight">Goals Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Track your progress and achieve your objectives</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -215,15 +215,12 @@ export const GoalsDashboard = () => {
             size="sm"
             onClick={forceRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-2 bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700"
+            className="flex items-center gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button 
-            onClick={() => setIsGoalFormOpen(true)}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
-          >
+          <Button onClick={() => setIsGoalFormOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Goal
           </Button>
@@ -232,57 +229,57 @@ export const GoalsDashboard = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
-          <CardContent className="p-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <Target className="h-5 w-5 text-blue-400" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Total Goals</p>
-                <p className="text-2xl font-bold text-blue-400">{goalStats.total}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Goals</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{goalStats.total}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
-          <CardContent className="p-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-green-400" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Active Goals</p>
-                <p className="text-2xl font-bold text-green-400">{goalStats.active}</p>
+                <p className="text-sm font-medium text-muted-foreground">Active Goals</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{goalStats.active}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
-          <CardContent className="p-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-500/20 rounded-lg">
-                <Trophy className="h-5 w-5 text-yellow-400" />
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Completed</p>
-                <p className="text-2xl font-bold text-yellow-400">{goalStats.completed}</p>
+                <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{goalStats.completed}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-700 hover:shadow-xl transition-shadow">
-          <CardContent className="p-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-500/20 rounded-lg">
-                <Clock className="h-5 w-5 text-purple-400" />
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Avg Progress</p>
-                <p className="text-2xl font-bold text-purple-400">{goalStats.avgProgress}%</p>
+                <p className="text-sm font-medium text-muted-foreground">Avg Progress</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{goalStats.avgProgress}%</p>
               </div>
             </div>
           </CardContent>
@@ -292,20 +289,20 @@ export const GoalsDashboard = () => {
       {/* Search and Filters */}
       <div className="flex gap-4 items-center">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search goals, tags, descriptions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-slate-800 border-slate-600 text-white placeholder-slate-400"
+            className="pl-10"
           />
         </div>
         
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-slate-800 border-slate-600 text-white">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="All Types" />
           </SelectTrigger>
-          <SelectContent className="bg-slate-800 border-slate-600">
+          <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
@@ -316,20 +313,19 @@ export const GoalsDashboard = () => {
       {/* Goals Grid */}
       <div className="space-y-4">
         {filteredGoals.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎯</div>
-            <h3 className="text-lg font-semibold mb-2 text-white">No goals yet</h3>
-            <p className="text-slate-400 mb-4">
-              Create your first goal to start tracking your progress
-            </p>
-            <Button 
-              onClick={() => setIsGoalFormOpen(true)}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Goal
-            </Button>
-          </div>
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="text-6xl mb-4">🎯</div>
+              <h3 className="text-lg font-semibold mb-2">No goals yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Create your first goal to start tracking your progress
+              </p>
+              <Button onClick={() => setIsGoalFormOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Goal
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredGoals.map((goal) => (
