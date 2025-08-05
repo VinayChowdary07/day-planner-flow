@@ -18,39 +18,47 @@ export const TaskCompletionAnimation = ({
 }: TaskCompletionAnimationProps) => {
   const [showAnimation, setShowAnimation] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [prevCompleted, setPrevCompleted] = useState(isCompleted);
 
   useEffect(() => {
-    if (isCompleted) {
-      setShowAnimation(true);
+    // Detect changes in completion status
+    if (isCompleted !== prevCompleted) {
+      setPrevCompleted(isCompleted);
       
-      // Trigger celebration after checkmark animation
-      const celebrationTimer = setTimeout(() => {
-        if (showConfetti) {
-          setShowCelebration(true);
-        }
-        onAnimationComplete?.();
-      }, 300);
+      if (isCompleted) {
+        // Task was just completed
+        setShowAnimation(true);
+        
+        // Trigger celebration after checkmark animation
+        const celebrationTimer = setTimeout(() => {
+          if (showConfetti) {
+            setShowCelebration(true);
+          }
+          onAnimationComplete?.();
+        }, 300);
 
-      // Hide celebration
-      const hideTimer = setTimeout(() => {
+        // Hide celebration
+        const hideTimer = setTimeout(() => {
+          setShowCelebration(false);
+        }, 1200);
+
+        return () => {
+          clearTimeout(celebrationTimer);
+          clearTimeout(hideTimer);
+        };
+      } else {
+        // Task was unchecked
+        setShowAnimation(false);
         setShowCelebration(false);
-      }, 1200);
-
-      return () => {
-        clearTimeout(celebrationTimer);
-        clearTimeout(hideTimer);
-      };
-    } else {
-      setShowAnimation(false);
-      setShowCelebration(false);
+      }
     }
-  }, [isCompleted, onAnimationComplete, showConfetti]);
+  }, [isCompleted, prevCompleted, onAnimationComplete, showConfetti]);
 
   return (
     <div className={cn("relative inline-block", className)}>
       <div className={cn(
         "relative transition-all duration-300",
-        showAnimation && "animate-checkmark"
+        showAnimation && isCompleted && "animate-checkmark"
       )}>
         <CheckCircle 
           className={cn(
@@ -62,8 +70,8 @@ export const TaskCompletionAnimation = ({
         />
       </div>
       
-      {/* Confetti celebration */}
-      {showCelebration && (
+      {/* Confetti celebration - only show if task is completed and animation is active */}
+      {showCelebration && isCompleted && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           {/* Multiple confetti particles */}
           {[...Array(6)].map((_, i) => (
@@ -85,8 +93,8 @@ export const TaskCompletionAnimation = ({
         </div>
       )}
       
-      {/* Celebration emoji */}
-      {showCelebration && (
+      {/* Celebration emoji - only show if task is completed and animation is active */}
+      {showCelebration && isCompleted && (
         <div className="task-complete-celebration absolute inset-0" />
       )}
     </div>

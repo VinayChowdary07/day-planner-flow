@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -188,6 +189,90 @@ export const useGamification = () => {
     }
   }, [user, userStats]);
 
+  // Deduct XP for task unchecking
+  const deductXP = useCallback(async (taskPriority: 'low' | 'medium' | 'high') => {
+    if (!user || !userStats) return;
+
+    const xpRewards = { low: 5, medium: 10, high: 15 };
+    const xpToDeduct = xpRewards[taskPriority];
+    const newTotalXP = Math.max(0, userStats.total_xp - xpToDeduct);
+
+    // Calculate new level
+    const { data: levelData } = await supabase.rpc('calculate_level_from_xp', { xp: newTotalXP });
+    const newLevel = levelData || 1;
+
+    // Check if we need to recalculate streak (only if this was the only task completed today)
+    const today = new Date().toISOString().split('T')[0];
+    let newStreak = userStats.current_streak;
+    
+    // Check if there are any other completed tasks today
+    const { count } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'complete')
+      .eq('task_date', today);
+
+    // If no completed tasks remain for today, reset streak logic
+    if ((count || 0) === 0) {
+      // Get the previous day's completion status to determine streak
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      const { count: yesterdayCount } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('status', 'complete')
+        .eq('task_date', yesterdayStr);
+
+      if ((yesterdayCount || 0) > 0) {
+        // Had tasks yesterday, so current streak should be reduced by 1
+        newStreak = Math.max(0, userStats.current_streak - 1);
+      } else {
+        // No tasks yesterday either, reset streak
+        newStreak = 0;
+      }
+    }
+
+    try {
+      const { data: updatedStats, error } = await supabase
+        .from('user_stats')
+        .update({
+          total_xp: newTotalXP,
+          level: newLevel,
+          current_streak: newStreak,
+          last_task_completed_date: (count || 0) > 0 ? today : null,
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setUserStats(updatedStats as UserStats);
+
+      // Show XP deduction toast
+      toast({
+        title: `-${xpToDeduct} XP`,
+        description: `Task unchecked! Total XP: ${newTotalXP}`,
+        variant: 'destructive',
+      });
+
+      // Show level down toast if applicable
+      if (newLevel < userStats.level) {
+        toast({
+          title: 'Level Down',
+          description: `You're now level ${newLevel}`,
+          variant: 'destructive',
+        });
+      }
+
+    } catch (error) {
+      console.error('Error deducting XP:', error);
+    }
+  }, [user, userStats]);
+
   // Check and award achievements
   const checkAndAwardAchievements = useCallback(async (totalXP: number, streak: number, level: number) => {
     if (!user) return;
@@ -277,6 +362,7 @@ export const useGamification = () => {
     userAchievements,
     loading,
     awardXP,
+    deductXP,
     getXPForNextLevel,
     refreshStats: initializeUserStats,
   };

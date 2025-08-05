@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskFilters } from '@/types/task';
@@ -9,7 +10,7 @@ export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const { awardXP } = useGamification();
+  const { awardXP, deductXP } = useGamification();
 
   const fetchTasks = useCallback(async () => {
     if (!user) {
@@ -323,17 +324,27 @@ export const useTasks = () => {
       return;
     }
 
-    const newStatus = task.status === 'complete' ? 'incomplete' : 'complete';
+    const wasComplete = task.status === 'complete';
+    const newStatus = wasComplete ? 'incomplete' : 'complete';
     console.log('Toggling task status:', id, 'from', task.status, 'to', newStatus);
     
     const result = await updateTask(id, { status: newStatus });
     
-    // Award XP if task was just completed
-    if (newStatus === 'complete' && result) {
-      try {
-        await awardXP(task.priority as 'low' | 'medium' | 'high');
-      } catch (error) {
-        console.error('Error awarding XP:', error);
+    if (result) {
+      if (newStatus === 'complete') {
+        // Award XP for completing task
+        try {
+          await awardXP(task.priority as 'low' | 'medium' | 'high');
+        } catch (error) {
+          console.error('Error awarding XP:', error);
+        }
+      } else {
+        // Deduct XP for unchecking task
+        try {
+          await deductXP(task.priority as 'low' | 'medium' | 'high');
+        } catch (error) {
+          console.error('Error deducting XP:', error);
+        }
       }
     }
     
