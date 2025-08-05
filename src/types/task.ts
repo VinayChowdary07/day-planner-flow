@@ -1,3 +1,4 @@
+
 export interface Task {
   id: string;
   user_id: string;
@@ -31,3 +32,17 @@ export interface TaskFilters {
   dateRange: 'today' | 'week' | 'month' | 'all';
 }
 
+// New interface for timed events/tasks
+export interface TimedItem {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  type: 'task' | 'event';
+  category?: string;
+  color?: string;
+  status?: 'complete' | 'incomplete';
+  priority?: 'low' | 'medium' | 'high';
+}
+
+export type CalendarViewMode = 'month' | 'agenda';
