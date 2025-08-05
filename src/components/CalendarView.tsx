@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -79,14 +80,14 @@ export const CalendarView = () => {
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [showTasks, setShowTasks] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
-  const [eventForm, setEventForm] = useState({
+  const [eventForm, setEventForm] = useState<EventFormData>({
     title: '',
     description: '',
     start_datetime: '',
     end_datetime: '',
     location: '',
     is_all_day: false,
-    recurrence_type: 'none' as const,
+    recurrence_type: 'none',
     color: '#6366F1',
   });
 
@@ -238,6 +239,15 @@ export const CalendarView = () => {
     if (isDateInCurrentMonth(date)) {
       setSelectedDate(date);
     }
+  };
+
+  // Create wrapper functions that return void for AgendaView
+  const handleUpdateEventForAgenda = async (id: string, updates: any): Promise<void> => {
+    await updateEvent(id, updates);
+  };
+
+  const handleUpdateTaskForAgenda = async (id: string, updates: any): Promise<void> => {
+    await updateTask(id, updates);
   };
 
   const renderMonthView = () => {
@@ -528,7 +538,7 @@ export const CalendarView = () => {
 
                 <div>
                   <Label htmlFor="recurrence">Recurrence</Label>
-                  <Select value={eventForm.recurrence_type} onValueChange={(value) => setEventForm((prev) => ({ ...prev, recurrence_type: value as any }))}>
+                  <Select value={eventForm.recurrence_type} onValueChange={(value) => setEventForm((prev) => ({ ...prev, recurrence_type: value as EventFormData['recurrence_type'] }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select recurrence" />
                     </SelectTrigger>
@@ -608,8 +618,8 @@ export const CalendarView = () => {
               selectedDate={selectedDate}
               events={events}
               tasks={tasks}
-              onUpdateEvent={updateEvent}
-              onUpdateTask={updateTask}
+              onUpdateEvent={handleUpdateEventForAgenda}
+              onUpdateTask={handleUpdateTaskForAgenda}
             />
           )}
         </div>
