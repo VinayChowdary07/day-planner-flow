@@ -9,6 +9,7 @@ import { Calendar, Clock, MapPin, Tag, Edit, Trash2, MoreVertical } from 'lucide
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SubtaskProgress } from '@/components/SubtaskProgress';
 import { SubtaskList } from '@/components/SubtaskList';
+import { TaskCompletionAnimation } from '@/components/TaskCompletionAnimation';
 import { useSubtasks } from '@/hooks/useSubtasks';
 
 interface TaskCardProps {
@@ -90,11 +91,21 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
         {/* Header Section */}
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 pt-0.5">
-            <Checkbox
-              checked={task.status === 'complete'}
-              onCheckedChange={() => onToggleComplete(task.id)}
-              className="h-5 w-5 rounded-md border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-md hover:shadow-primary/20"
-            />
+            <div className="relative">
+              <Checkbox
+                checked={task.status === 'complete'}
+                onCheckedChange={() => onToggleComplete(task.id)}
+                className="h-5 w-5 rounded-md border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-md hover:shadow-primary/20"
+              />
+              {task.status === 'complete' && (
+                <div className="absolute inset-0">
+                  <TaskCompletionAnimation 
+                    isCompleted={true} 
+                    showConfetti={true}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="flex-1 min-w-0 space-y-2">
@@ -120,7 +131,7 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-primary/10 hover:text-primary rounded-full"
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-primary/10 hover:text-primary rounded-full hover:scale-110"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </Button>

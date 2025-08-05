@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { Progress } from '@/components/ui/progress';
+import { EnhancedProgress } from '@/components/ui/enhanced-progress';
 import { CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,9 @@ interface AnimatedProgressBarProps {
   label?: string;
   showCompletion?: boolean;
   className?: string;
+  type?: 'linear' | 'radial' | 'segmented';
+  showShimmer?: boolean;
+  segments?: number;
 }
 
 export const AnimatedProgressBar = ({
@@ -16,6 +19,9 @@ export const AnimatedProgressBar = ({
   label,
   showCompletion = true,
   className,
+  type = 'linear',
+  showShimmer = false,
+  segments = 5,
 }: AnimatedProgressBarProps) => {
   const [displayValue, setDisplayValue] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -51,10 +57,14 @@ export const AnimatedProgressBar = ({
       )}
       
       <div className="relative">
-        <Progress
+        <EnhancedProgress
           value={displayValue}
+          type={type}
+          showAnimation={true}
+          showShimmer={showShimmer}
+          segments={segments}
           className={cn(
-            'h-2 transition-all duration-700 ease-out',
+            'transition-all duration-700 ease-out',
             isCompleted && 'bg-green-100 dark:bg-green-900/20'
           )}
         />

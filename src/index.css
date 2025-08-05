@@ -107,6 +107,18 @@
   }
 }
 
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer utilities {
   .line-clamp-2 {
     display: -webkit-box;
@@ -141,8 +153,152 @@
   .animate-slide-up {
     animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  /* New enhanced animations */
+  .animate-checkmark {
+    animation: checkmarkPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .animate-confetti {
+    animation: confettiBurst 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .animate-glow-pulse {
+    animation: glowPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-button-press {
+    animation: buttonPress 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-progress-fill {
+    animation: progressFillSmooth 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-radial-progress {
+    animation: radialFill 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Button microinteractions */
+  .btn-primary {
+    @apply relative overflow-hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-primary:hover {
+    @apply scale-105 shadow-lg;
+    box-shadow: 0 10px 25px -5px hsl(var(--primary) / 0.4), 
+                0 0 0 1px hsl(var(--primary) / 0.1),
+                0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .btn-primary:active {
+    @apply scale-95;
+    transition-duration: 0.1s;
+  }
+
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: hsl(var(--primary-foreground) / 0.1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+
+  .btn-primary:hover::before {
+    width: 300px;
+    height: 300px;
+  }
+
+  /* Floating Action Button special effects */
+  .fab {
+    @apply relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .fab:hover {
+    @apply scale-110;
+    filter: brightness(1.1);
+    box-shadow: 0 20px 40px -10px hsl(var(--primary) / 0.5),
+                0 0 0 4px hsl(var(--primary) / 0.1),
+                0 0 30px hsl(var(--primary) / 0.4);
+  }
+
+  .fab:active {
+    @apply scale-95;
+  }
+
+  /* Progress bar enhancements */
+  .progress-enhanced {
+    @apply relative overflow-hidden bg-gradient-to-r from-secondary to-muted;
+    border-radius: 10px;
+  }
+
+  .progress-enhanced::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--background) / 0.4),
+      transparent
+    );
+    animation: shimmer 2s infinite;
+  }
+
+  /* Task completion celebration */
+  .task-complete-celebration {
+    @apply relative;
+  }
+
+  .task-complete-celebration::after {
+    content: '🎉';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    opacity: 0;
+    pointer-events: none;
+    animation: celebrationPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  /* Radial progress bars */
+  .radial-progress {
+    @apply relative;
+    width: 120px;
+    height: 120px;
+  }
+
+  .radial-progress svg {
+    transform: rotate(-90deg);
+  }
+
+  .radial-progress .progress-ring {
+    fill: none;
+    stroke: hsl(var(--muted));
+    stroke-width: 8;
+  }
+
+  .radial-progress .progress-fill {
+    fill: none;
+    stroke: hsl(var(--primary));
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
 
+/* Keyframe animations */
 @keyframes progressFill {
   0% {
     width: 0%;
@@ -204,6 +360,102 @@
   100% {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes confettiBurst {
+  0% {
+    transform: scale(0.5) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.8) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.6), 
+                0 0 60px hsl(var(--primary) / 0.4);
+  }
+}
+
+@keyframes buttonPress {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes progressFillSmooth {
+  0% {
+    width: 0%;
+    opacity: 0.7;
+  }
+  100% {
+    width: var(--progress-width);
+    opacity: 1;
+  }
+}
+
+@keyframes radialFill {
+  0% {
+    stroke-dasharray: 0 283;
+  }
+  100% {
+    stroke-dasharray: var(--progress-dash) 283;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes celebrationPop {
+  0% {
+    transform: translateX(-50%) scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(-50%) scale(1.2) translateY(-10px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0.8) translateY(-30px);
+    opacity: 0;
   }
 }
 
