@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskFilters } from '@/types/task';
@@ -321,6 +320,22 @@ export const useTasks = () => {
     const task = tasks.find(t => t.id === id);
     if (!task) {
       console.error('Task not found for completion toggle:', id);
+      return;
+    }
+
+    // Check if task has subtasks
+    const { count: subtaskCount } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('parent_task_id', id);
+
+    if (subtaskCount && subtaskCount > 0) {
+      // Task has subtasks - prevent manual toggle
+      toast({
+        title: 'Cannot toggle manually',
+        description: 'This task has subtasks. Complete all subtasks to mark the main task as complete.',
+        variant: 'destructive',
+      });
       return;
     }
 

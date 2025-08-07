@@ -1,62 +1,65 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Task } from '@/types/task';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useGamification } from '@/hooks/useGamification';
 
-interface SubtaskProgress {
+export interface Subtask {
+  id: string;
+  title: string;
+  status: 'complete' | 'incomplete';
+  parent_task_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubtaskProgress {
   has_subtasks: boolean;
   total_subtasks: number;
   completed_subtasks: number;
   progress_percentage: number | null;
 }
 
-export const useSubtasks = (parentTaskId?: string) => {
-  const [subtasks, setSubtasks] = useState<Task[]>([]);
+export const useSubtasks = (parentTaskId: string) => {
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [progress, setProgress] = useState<SubtaskProgress | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { awardXP, deductXP } = useGamification();
 
-  const calculateProgress = useCallback((tasks: Task[]) => {
-    if (tasks.length === 0) {
-      setProgress(null);
-      return;
-    }
-
-    const completedCount = tasks.filter(task => task.status === 'complete').length;
-    const totalCount = tasks.length;
-    const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const calculateProgress = useCallback((subtaskList: Subtask[]): SubtaskProgress => {
+    const total = subtaskList.length;
+    const completed = subtaskList.filter(s => s.status === 'complete').length;
     
-    setProgress({
-      has_subtasks: true,
-      total_subtasks: totalCount,
-      completed_subtasks: completedCount,
-      progress_percentage: percentage
-    });
+    return {
+      has_subtasks: total > 0,
+      total_subtasks: total,
+      completed_subtasks: completed,
+      progress_percentage: total > 0 ? Math.round((completed / total) * 100) : null,
+    };
   }, []);
 
   const fetchSubtasks = useCallback(async () => {
     if (!user || !parentTaskId) {
-      setSubtasks([]);
-      setProgress(null);
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .eq('parent_task_id', parentTaskId)
-        .order('order_position', { ascending: true })
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      const subtaskData = (data || []) as Task[];
+      const subtaskData = (data || []) as Subtask[];
       setSubtasks(subtaskData);
-      calculateProgress(subtaskData);
+      setProgress(calculateProgress(subtaskData));
     } catch (error) {
       console.error('Error fetching subtasks:', error);
     } finally {
@@ -68,14 +71,12 @@ export const useSubtasks = (parentTaskId?: string) => {
     fetchSubtasks();
   }, [fetchSubtasks]);
 
-  // Set up real-time subscription for subtasks
+  // Real-time subscription for subtask changes
   useEffect(() => {
     if (!user || !parentTaskId) return;
 
-    console.log('Setting up real-time subscription for subtasks of parent:', parentTaskId);
-    
     const channel = supabase
-      .channel(`subtasks-${parentTaskId}-${Date.now()}`)
+      .channel(`subtasks-${parentTaskId}`)
       .on(
         'postgres_changes',
         {
@@ -85,81 +86,104 @@ export const useSubtasks = (parentTaskId?: string) => {
           filter: `parent_task_id=eq.${parentTaskId}`,
         },
         (payload) => {
-          console.log('Subtask real-time update received:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newSubtask = payload.new as Task;
-            console.log('New subtask inserted:', newSubtask);
-            setSubtasks(prev => {
-              const updated = [...prev, newSubtask].sort((a, b) => a.order_position - b.order_position);
-              calculateProgress(updated);
-              return updated;
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedSubtask = payload.new as Task;
-            console.log('Subtask updated:', updatedSubtask);
-            setSubtasks(prev => {
-              const updated = prev.map(task => 
-                task.id === updatedSubtask.id ? updatedSubtask : task
-              );
-              calculateProgress(updated);
-              return updated;
-            });
-          } else if (payload.eventType === 'DELETE') {
-            const deletedSubtask = payload.old as Task;
-            console.log('Subtask deleted:', deletedSubtask);
-            setSubtasks(prev => {
-              const updated = prev.filter(task => task.id !== deletedSubtask.id);
-              calculateProgress(updated);
-              return updated;
-            });
-          }
+          console.log('Subtask real-time update:', payload);
+          fetchSubtasks();
         }
       )
-      .subscribe((status) => {
-        console.log('Subtask subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('Cleaning up subtask subscription');
       supabase.removeChannel(channel);
     };
-  }, [user, parentTaskId, calculateProgress]);
+  }, [user, parentTaskId, fetchSubtasks]);
 
-  const createSubtask = async (subtaskData: Partial<Task>) => {
-    if (!user || !parentTaskId || !subtaskData.title) return;
+  const updateMainTaskStatus = useCallback(async (newProgress: SubtaskProgress) => {
+    if (!user || !parentTaskId) return;
 
     try {
-      console.log('Creating subtask for parent:', parentTaskId);
-      
+      // Get the main task details first
+      const { data: mainTask, error: fetchError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', parentTaskId)
+        .single();
+
+      if (fetchError || !mainTask) {
+        console.error('Error fetching main task:', fetchError);
+        return;
+      }
+
+      const wasComplete = mainTask.status === 'complete';
+      const shouldBeComplete = newProgress.progress_percentage === 100;
+
+      // Only update if status actually changed
+      if (wasComplete !== shouldBeComplete) {
+        const newStatus = shouldBeComplete ? 'complete' : 'incomplete';
+        
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update({ status: newStatus })
+          .eq('id', parentTaskId);
+
+        if (updateError) {
+          console.error('Error updating main task status:', updateError);
+          return;
+        }
+
+        // Handle XP changes
+        if (shouldBeComplete && !wasComplete) {
+          // Task became complete - award XP
+          await awardXP(mainTask.priority as 'low' | 'medium' | 'high');
+          toast({
+            title: 'Task Completed!',
+            description: 'All subtasks finished. XP awarded!',
+          });
+        } else if (!shouldBeComplete && wasComplete) {
+          // Task became incomplete - deduct XP
+          await deductXP(mainTask.priority as 'low' | 'medium' | 'high');
+          toast({
+            title: 'Task reverted to Incomplete',
+            description: 'XP updated.',
+            variant: 'destructive',
+          });
+        }
+
+        console.log(`Main task ${parentTaskId} status updated to: ${newStatus}`);
+      }
+    } catch (error) {
+      console.error('Error updating main task status:', error);
+    }
+  }, [user, parentTaskId, awardXP, deductXP]);
+
+  const createSubtask = async (title: string) => {
+    if (!user || !parentTaskId || !title.trim()) return;
+
+    try {
       const { data, error } = await supabase
         .from('tasks')
         .insert({
-          title: subtaskData.title,
-          description: subtaskData.description || null,
-          task_date: subtaskData.task_date || new Date().toISOString().split('T')[0],
-          user_id: user.id,
+          title: title.trim(),
           parent_task_id: parentTaskId,
+          user_id: user.id,
           status: 'incomplete',
-          priority: subtaskData.priority || 'medium',
-          category: subtaskData.category || 'general',
+          task_date: new Date().toISOString().split('T')[0],
+          priority: 'medium',
+          category: 'general',
+          tags: [],
           order_position: subtasks.length,
-          tags: subtaskData.tags || [],
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('Subtask created successfully:', data);
-
-      // Immediately update local state for instant feedback
-      const newSubtask = data as Task;
-      setSubtasks(prev => {
-        const updated = [...prev, newSubtask].sort((a, b) => a.order_position - b.order_position);
-        calculateProgress(updated);
-        return updated;
-      });
+      const newSubtasks = [...subtasks, data as Subtask];
+      setSubtasks(newSubtasks);
+      const newProgress = calculateProgress(newSubtasks);
+      setProgress(newProgress);
+      
+      // Update main task status if needed
+      await updateMainTaskStatus(newProgress);
 
       toast({
         title: 'Success',
@@ -177,39 +201,33 @@ export const useSubtasks = (parentTaskId?: string) => {
     }
   };
 
-  const updateSubtask = async (subtaskId: string, updates: Partial<Task>) => {
+  const toggleSubtask = async (subtaskId: string) => {
+    const subtask = subtasks.find(s => s.id === subtaskId);
+    if (!subtask) return;
+
+    const newStatus = subtask.status === 'complete' ? 'incomplete' : 'complete';
+
     try {
-      console.log('Updating subtask:', subtaskId, updates);
-      
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('tasks')
-        .update(updates)
-        .eq('id', subtaskId)
-        .select()
-        .single();
+        .update({ status: newStatus })
+        .eq('id', subtaskId);
 
       if (error) throw error;
 
-      console.log('Subtask updated successfully:', data);
+      const updatedSubtasks = subtasks.map(s =>
+        s.id === subtaskId ? { ...s, status: newStatus } : s
+      );
+      
+      setSubtasks(updatedSubtasks);
+      const newProgress = calculateProgress(updatedSubtasks);
+      setProgress(newProgress);
+      
+      // Update main task status based on new subtask progress
+      await updateMainTaskStatus(newProgress);
 
-      // Immediately update local state for instant feedback
-      const updatedSubtask = data as Task;
-      setSubtasks(prev => {
-        const updated = prev.map(task => 
-          task.id === updatedSubtask.id ? updatedSubtask : task
-        );
-        calculateProgress(updated);
-        return updated;
-      });
-
-      toast({
-        title: 'Success',
-        description: 'Subtask updated successfully',
-      });
-
-      return data;
     } catch (error) {
-      console.error('Error updating subtask:', error);
+      console.error('Error toggling subtask:', error);
       toast({
         title: 'Error',
         description: 'Failed to update subtask',
@@ -220,8 +238,6 @@ export const useSubtasks = (parentTaskId?: string) => {
 
   const deleteSubtask = async (subtaskId: string) => {
     try {
-      console.log('Deleting subtask:', subtaskId);
-      
       const { error } = await supabase
         .from('tasks')
         .delete()
@@ -229,14 +245,13 @@ export const useSubtasks = (parentTaskId?: string) => {
 
       if (error) throw error;
 
-      console.log('Subtask deleted successfully:', subtaskId);
-
-      // Immediately update local state for instant feedback
-      setSubtasks(prev => {
-        const updated = prev.filter(task => task.id !== subtaskId);
-        calculateProgress(updated);
-        return updated;
-      });
+      const updatedSubtasks = subtasks.filter(s => s.id !== subtaskId);
+      setSubtasks(updatedSubtasks);
+      const newProgress = calculateProgress(updatedSubtasks);
+      setProgress(newProgress);
+      
+      // Update main task status based on new subtask progress
+      await updateMainTaskStatus(newProgress);
 
       toast({
         title: 'Success',
@@ -252,21 +267,12 @@ export const useSubtasks = (parentTaskId?: string) => {
     }
   };
 
-  const toggleSubtaskComplete = async (subtaskId: string) => {
-    const subtask = subtasks.find(t => t.id === subtaskId);
-    if (!subtask) return;
-
-    const newStatus = subtask.status === 'complete' ? 'incomplete' : 'complete';
-    return updateSubtask(subtaskId, { status: newStatus });
-  };
-
   return {
     subtasks,
     progress,
     loading,
     createSubtask,
-    updateSubtask,
+    toggleSubtask,
     deleteSubtask,
-    toggleSubtaskComplete,
   };
 };

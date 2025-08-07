@@ -1,16 +1,16 @@
-
 import React from 'react';
 import { Task } from '@/types/task';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Clock, MapPin, Tag, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { Calendar, Clock, MapPin, Tag, Edit, Trash2, MoreVertical, Lock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SubtaskProgress } from '@/components/SubtaskProgress';
 import { SubtaskList } from '@/components/SubtaskList';
 import { TaskCompletionAnimation } from '@/components/TaskCompletionAnimation';
 import { useSubtasks } from '@/hooks/useSubtasks';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TaskCardProps {
   task: Task;
@@ -70,6 +70,17 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
 
   // Don't show subtasks for subtasks themselves
   const isSubtask = !!task.parent_task_id;
+  
+  // Check if this task has subtasks and whether manual toggle should be disabled
+  const hasSubtasks = progress?.has_subtasks || false;
+  const isCheckboxDisabled = hasSubtasks;
+
+  const handleCheckboxClick = () => {
+    if (isCheckboxDisabled) {
+      return; // Don't trigger toggle if disabled
+    }
+    onToggleComplete(task.id);
+  };
 
   return (
     <Card className={`
@@ -92,11 +103,31 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 pt-0.5">
             <div className="relative">
-              <Checkbox
-                checked={task.status === 'complete'}
-                onCheckedChange={() => onToggleComplete(task.id)}
-                className="h-5 w-5 rounded-md border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-md hover:shadow-primary/20"
-              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="relative">
+                      <Checkbox
+                        checked={task.status === 'complete'}
+                        onCheckedChange={handleCheckboxClick}
+                        disabled={isCheckboxDisabled}
+                        className={`h-5 w-5 rounded-md border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-md hover:shadow-primary/20 ${
+                          isCheckboxDisabled ? 'cursor-not-allowed opacity-60' : ''
+                        }`}
+                      />
+                      {isCheckboxDisabled && (
+                        <Lock className="absolute -top-1 -right-1 h-3 w-3 text-muted-foreground bg-background rounded-full p-0.5" />
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isCheckboxDisabled ? 
+                      'Complete all subtasks to mark this task as done' : 
+                      'Toggle task completion'
+                    }
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {task.status === 'complete' && (
                 <div className="absolute inset-0">
                   <TaskCompletionAnimation 
@@ -116,6 +147,11 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
                   : 'text-foreground group-hover:text-primary/90'
               }`}>
                 {task.title}
+                {hasSubtasks && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    Has subtasks
+                  </Badge>
+                )}
               </h3>
               
               <div className="flex items-center gap-2 flex-shrink-0">
