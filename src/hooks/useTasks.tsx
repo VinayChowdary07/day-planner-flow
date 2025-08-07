@@ -50,7 +50,7 @@ export const useTasks = () => {
     fetchTasks();
   }, [fetchTasks]);
 
-  // Set up real-time subscription
+  // Real-time subscription
   useEffect(() => {
     if (!user) return;
 
@@ -329,13 +329,13 @@ export const useTasks = () => {
       .select('*', { count: 'exact', head: true })
       .eq('parent_task_id', id);
 
-    if (subtaskCount && subtaskCount > 0) {
-      // Task has subtasks - prevent manual toggle
-      toast({
-        title: 'Cannot toggle manually',
-        description: 'This task has subtasks. Complete all subtasks to mark the main task as complete.',
-        variant: 'destructive',
-      });
+    const hasSubtasks = subtaskCount && subtaskCount > 0;
+
+    // If task has subtasks, we'll handle the toggle through the subtasks hook
+    // This function is now primarily for tasks without subtasks
+    if (hasSubtasks) {
+      // Let the subtask hook handle this
+      console.log('Task has subtasks, letting subtask hook handle toggle');
       return;
     }
 

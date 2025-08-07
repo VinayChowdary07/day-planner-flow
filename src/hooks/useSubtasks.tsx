@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -96,7 +97,7 @@ export const useSubtasks = (parentTaskId: string) => {
     };
   }, [user, parentTaskId, fetchSubtasks]);
 
-  const updateMainTaskStatus = useCallback(async (newProgress: SubtaskProgress) => {
+  const updateMainTaskStatus = useCallback(async (newProgress: SubtaskProgress, skipXPUpdate = false) => {
     if (!user || !parentTaskId) return;
 
     try {
@@ -129,22 +130,24 @@ export const useSubtasks = (parentTaskId: string) => {
           return;
         }
 
-        // Handle XP changes
-        if (shouldBeComplete && !wasComplete) {
-          // Task became complete - award XP
-          await awardXP(mainTask.priority as 'low' | 'medium' | 'high');
-          toast({
-            title: 'Task Completed!',
-            description: 'All subtasks finished. XP awarded!',
-          });
-        } else if (!shouldBeComplete && wasComplete) {
-          // Task became incomplete - deduct XP
-          await deductXP(mainTask.priority as 'low' | 'medium' | 'high');
-          toast({
-            title: 'Task reverted to Incomplete',
-            description: 'XP updated.',
-            variant: 'destructive',
-          });
+        // Handle XP changes only if not explicitly skipping
+        if (!skipXPUpdate) {
+          if (shouldBeComplete && !wasComplete) {
+            // Task became complete - award XP
+            await awardXP(mainTask.priority as 'low' | 'medium' | 'high');
+            toast({
+              title: 'Task Completed!',
+              description: 'All subtasks finished. XP awarded!',
+            });
+          } else if (!shouldBeComplete && wasComplete) {
+            // Task became incomplete - deduct XP
+            await deductXP(mainTask.priority as 'low' | 'medium' | 'high');
+            toast({
+              title: 'Task reverted to Incomplete',
+              description: 'XP updated.',
+              variant: 'destructive',
+            });
+          }
         }
 
         console.log(`Main task ${parentTaskId} status updated to: ${newStatus}`);
@@ -153,6 +156,88 @@ export const useSubtasks = (parentTaskId: string) => {
       console.error('Error updating main task status:', error);
     }
   }, [user, parentTaskId, awardXP, deductXP]);
+
+  // New function to handle main task checkbox toggle
+  const toggleMainTaskComplete = useCallback(async () => {
+    if (!user || !parentTaskId) return;
+
+    try {
+      // Get current main task status
+      const { data: mainTask, error: fetchError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', parentTaskId)
+        .single();
+
+      if (fetchError || !mainTask) {
+        console.error('Error fetching main task:', fetchError);
+        return;
+      }
+
+      const wasComplete = mainTask.status === 'complete';
+      const newMainStatus = wasComplete ? 'incomplete' : 'complete';
+      const newSubtaskStatus = wasComplete ? 'incomplete' : 'complete';
+
+      // Update main task status
+      const { error: mainTaskError } = await supabase
+        .from('tasks')
+        .update({ status: newMainStatus })
+        .eq('id', parentTaskId);
+
+      if (mainTaskError) {
+        console.error('Error updating main task:', mainTaskError);
+        return;
+      }
+
+      // Update all subtasks to match main task status
+      if (subtasks.length > 0) {
+        const { error: subtasksError } = await supabase
+          .from('tasks')
+          .update({ status: newSubtaskStatus })
+          .eq('parent_task_id', parentTaskId)
+          .eq('user_id', user.id);
+
+        if (subtasksError) {
+          console.error('Error updating subtasks:', subtasksError);
+          return;
+        }
+
+        // Update local state
+        const updatedSubtasks = subtasks.map(s => ({ 
+          ...s, 
+          status: newSubtaskStatus as 'complete' | 'incomplete' 
+        }));
+        setSubtasks(updatedSubtasks);
+        setProgress(calculateProgress(updatedSubtasks));
+      }
+
+      // Handle XP changes
+      if (!wasComplete) {
+        // Task became complete - award XP
+        await awardXP(mainTask.priority as 'low' | 'medium' | 'high');
+        toast({
+          title: 'Task Completed!',
+          description: subtasks.length > 0 ? 'All subtasks marked complete. XP awarded!' : 'Task completed. XP awarded!',
+        });
+      } else {
+        // Task became incomplete - deduct XP
+        await deductXP(mainTask.priority as 'low' | 'medium' | 'high');
+        toast({
+          title: 'Task reverted to Incomplete',
+          description: subtasks.length > 0 ? 'All subtasks marked incomplete. XP updated.' : 'Task incomplete. XP updated.',
+          variant: 'destructive',
+        });
+      }
+
+    } catch (error) {
+      console.error('Error toggling main task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update task',
+        variant: 'destructive',
+      });
+    }
+  }, [user, parentTaskId, subtasks, awardXP, deductXP, calculateProgress]);
 
   const createSubtask = async (title: string) => {
     if (!user || !parentTaskId || !title.trim()) return;
@@ -182,8 +267,8 @@ export const useSubtasks = (parentTaskId: string) => {
       const newProgress = calculateProgress(newSubtasks);
       setProgress(newProgress);
       
-      // Update main task status if needed
-      await updateMainTaskStatus(newProgress);
+      // Update main task status if needed (skip XP update since we're just adding subtasks)
+      await updateMainTaskStatus(newProgress, true);
 
       toast({
         title: 'Success',
@@ -250,8 +335,8 @@ export const useSubtasks = (parentTaskId: string) => {
       const newProgress = calculateProgress(updatedSubtasks);
       setProgress(newProgress);
       
-      // Update main task status based on new subtask progress
-      await updateMainTaskStatus(newProgress);
+      // Update main task status based on new subtask progress (skip XP update since we're just removing subtasks)
+      await updateMainTaskStatus(newProgress, true);
 
       toast({
         title: 'Success',
@@ -274,5 +359,6 @@ export const useSubtasks = (parentTaskId: string) => {
     createSubtask,
     toggleSubtask,
     deleteSubtask,
+    toggleMainTaskComplete,
   };
 };
