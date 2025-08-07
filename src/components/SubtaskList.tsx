@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,7 @@ interface SubtaskListProps {
 }
 
 export const SubtaskList = ({ parentTaskId }: SubtaskListProps) => {
-  const { subtasks, createSubtask, toggleSubtaskComplete, deleteSubtask, loading } = useSubtasks(parentTaskId);
+  const { subtasks, createSubtask, toggleSubtask, deleteSubtask, loading } = useSubtasks(parentTaskId);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -24,9 +23,7 @@ export const SubtaskList = ({ parentTaskId }: SubtaskListProps) => {
 
     setIsCreating(true);
     try {
-      await createSubtask({
-        title: newSubtaskTitle.trim(),
-      });
+      await createSubtask(newSubtaskTitle.trim());
       setNewSubtaskTitle('');
     } finally {
       setIsCreating(false);
@@ -150,7 +147,7 @@ export const SubtaskList = ({ parentTaskId }: SubtaskListProps) => {
                       <div className="flex-shrink-0">
                         <Checkbox
                           checked={subtask.status === 'complete'}
-                          onCheckedChange={() => toggleSubtaskComplete(subtask.id)}
+                          onCheckedChange={() => toggleSubtask(subtask.id)}
                           className="h-4 w-4 rounded border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-sm"
                         />
                       </div>
@@ -168,19 +165,6 @@ export const SubtaskList = ({ parentTaskId }: SubtaskListProps) => {
                       </div>
                       
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs font-medium px-2 py-1 transition-all duration-300 ${
-                            subtask.priority === 'high'
-                              ? 'bg-red-50 text-red-600 border-red-200/60 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/30'
-                              : subtask.priority === 'medium'
-                              ? 'bg-amber-50 text-amber-600 border-amber-200/60 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/30'
-                              : 'bg-green-50 text-green-600 border-green-200/60 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800/30'
-                          }`}
-                        >
-                          {subtask.priority}
-                        </Badge>
-                        
                         <Button
                           variant="ghost"
                           size="sm"

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -177,7 +176,8 @@ export const useSubtasks = (parentTaskId: string) => {
 
       if (error) throw error;
 
-      const newSubtasks = [...subtasks, data as Subtask];
+      const newSubtask = data as Subtask;
+      const newSubtasks = [...subtasks, newSubtask];
       setSubtasks(newSubtasks);
       const newProgress = calculateProgress(newSubtasks);
       setProgress(newProgress);
@@ -216,7 +216,7 @@ export const useSubtasks = (parentTaskId: string) => {
       if (error) throw error;
 
       const updatedSubtasks = subtasks.map(s =>
-        s.id === subtaskId ? { ...s, status: newStatus } : s
+        s.id === subtaskId ? { ...s, status: newStatus as 'complete' | 'incomplete' } : s
       );
       
       setSubtasks(updatedSubtasks);
