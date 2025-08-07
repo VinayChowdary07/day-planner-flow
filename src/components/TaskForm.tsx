@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Calendar, Clock, MapPin, Flag, Repeat, Target, FolderOpen, Type, AlignLeft } from 'lucide-react';
+import { Plus, Calendar, Clock, MapPin, Flag, Repeat, Target, FolderOpen, Type, AlignLeft, Link, FileText } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
 import { useProjects } from '@/hooks/useProjects';
 import { useGoals } from '@/hooks/useGoals';
@@ -148,6 +147,10 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
     setFocusedField(null);
   };
 
+  // Get selected project and goal for display
+  const selectedProject = projects.find(p => p.id === form.watch('project_id'));
+  const selectedGoal = goals.find(g => g.id === form.watch('goal_id'));
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -172,7 +175,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
               {/* Basic Details Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Type className="h-4 w-4" />
+                  <FileText className="h-4 w-4" />
                   <span>Task Details</span>
                 </div>
                 
@@ -379,7 +382,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Flag className="h-4 w-4" />
-                  <span>Organization & Priority</span>
+                  <span>Organization</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -467,11 +470,11 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
 
               <Separator />
 
-              {/* Linking Section */}
+              {/* Links Section - Enhanced */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Target className="h-4 w-4" />
-                  <span>Links & Relationships</span>
+                  <Link className="h-4 w-4" />
+                  <span>🧩 Links & Relationships</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -482,7 +485,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
                           <FolderOpen className="h-3 w-3" />
-                          Linked Project
+                          📁 Linked Project
                         </FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
@@ -492,16 +495,24 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                               <SelectValue placeholder="Select project" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">No project</SelectItem>
+                          <SelectContent className="bg-background border z-50">
+                            <SelectItem value="none">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
+                                No project
+                              </div>
+                            </SelectItem>
                             {projects.map((project) => (
                               <SelectItem key={project.id} value={project.id}>
                                 <div className="flex items-center gap-2">
                                   <div 
-                                    className="w-3 h-3 rounded-full" 
+                                    className="w-3 h-3 rounded-full shadow-sm" 
                                     style={{ backgroundColor: project.color }}
                                   />
-                                  {project.name}
+                                  <span className="truncate">{project.name}</span>
+                                  <span className="text-xs text-muted-foreground ml-auto">
+                                    {project.completedTasks}/{project.totalTasks}
+                                  </span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -519,7 +530,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
                           <Target className="h-3 w-3" />
-                          Linked Goal
+                          🎯 Linked Goal
                         </FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
@@ -529,11 +540,19 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                               <SelectValue placeholder="Select goal" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">No goal</SelectItem>
+                          <SelectContent className="bg-background border z-50">
+                            <SelectItem value="none">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
+                                No goal
+                              </div>
+                            </SelectItem>
                             {goals.map((goal) => (
                               <SelectItem key={goal.id} value={goal.id}>
-                                🎯 {goal.title}
+                                <div className="flex items-center gap-2">
+                                  <Target className="h-3 w-3 text-primary" />
+                                  <span className="truncate">{goal.title}</span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -544,11 +563,43 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                   />
                 </div>
 
-                {(form.watch('project_id') !== 'none' || form.watch('goal_id') !== 'none') && (
-                  <div className="p-3 rounded-lg bg-muted/30 border animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                    <p className="text-sm text-muted-foreground">
-                      💡 This task will contribute to the progress of the selected {form.watch('project_id') !== 'none' && form.watch('goal_id') !== 'none' ? 'project and goal' : form.watch('project_id') !== 'none' ? 'project' : 'goal'}.
-                    </p>
+                {/* Enhanced Link Preview */}
+                {(selectedProject || selectedGoal) && (
+                  <div className="p-4 rounded-lg bg-muted/30 border border-primary/20 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Link className="h-4 w-4 text-primary" />
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-sm flex items-center gap-2">
+                          <span>🔗 Task Connections</span>
+                        </h4>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {selectedProject && (
+                            <div className="flex items-center gap-2">
+                              <FolderOpen className="h-3 w-3" />
+                              <span>Contributing to project:</span>
+                              <div className="flex items-center gap-1">
+                                <div 
+                                  className="w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: selectedProject.color }}
+                                />
+                                <span className="font-medium">{selectedProject.name}</span>
+                              </div>
+                            </div>
+                          )}
+                          {selectedGoal && (
+                            <div className="flex items-center gap-2">
+                              <Target className="h-3 w-3" />
+                              <span>Working towards goal:</span>
+                              <span className="font-medium">{selectedGoal.title}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
