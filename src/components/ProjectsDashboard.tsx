@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useProjects } from '@/hooks/useProjects';
+import { useProjects, ProjectWithProgress } from '@/hooks/useProjects';
 import { ProjectCard } from '@/components/ProjectCard';
 import { ProjectForm } from '@/components/ProjectForm';
 import { KanbanBoard } from '@/components/KanbanBoard';
@@ -9,12 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Project, ProjectFilters } from '@/types/project';
-import { Search, FolderOpen, Filter, CheckCircle, Clock, Archive, Kanban } from 'lucide-react';
+import { ProjectFilters } from '@/types/project';
+import { Search, FolderOpen, Filter, CheckCircle, Clock, Archive, Kanban, Target } from 'lucide-react';
 
 export const ProjectsDashboard = () => {
   const { projects, loading, filterProjects } = useProjects();
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectWithProgress | null>(null);
   const [filters, setFilters] = useState<ProjectFilters>({
     search: '',
     status: 'all',
@@ -26,8 +26,14 @@ export const ProjectsDashboard = () => {
   // Calculate project statistics
   const totalProjects = projects.length;
   const activeProjects = projects.filter(project => project.status === 'active').length;
-  const completedProjects = projects.filter(project => project.status === 'completed').length;
+  const completedProjects = projects.filter(project => 
+    project.status === 'completed' || (project.progressPercentage === 100 && project.totalTasks > 0)
+  ).length;
   const archivedProjects = projects.filter(project => project.status === 'archived').length;
+
+  // Calculate task statistics across all projects
+  const totalTasks = projects.reduce((sum, project) => sum + project.totalTasks, 0);
+  const totalCompletedTasks = projects.reduce((sum, project) => sum + project.completedTasks, 0);
 
   if (loading) {
     return (
@@ -48,8 +54,8 @@ export const ProjectsDashboard = () => {
         <ProjectForm onSuccess={() => setSelectedProject(null)} />
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
@@ -63,20 +69,20 @@ export const ProjectsDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <Clock className="h-4 w-4 text-green-600" />
+            <Clock className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeProjects}</div>
+            <div className="text-2xl font-bold text-blue-600">{activeProjects}</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-blue-600" />
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{completedProjects}</div>
+            <div className="text-2xl font-bold text-green-600">{completedProjects}</div>
           </CardContent>
         </Card>
         
@@ -87,6 +93,21 @@ export const ProjectsDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-600">{archivedProjects}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tasks Progress</CardTitle>
+            <Target className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {totalTasks > 0 ? `${Math.round((totalCompletedTasks / totalTasks) * 100)}%` : '0%'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {totalCompletedTasks} of {totalTasks} tasks
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -1,23 +1,46 @@
 
-import { Project } from '@/types/project';
+import { ProjectWithProgress } from '@/hooks/useProjects';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit2, Trash2, FolderOpen, Calendar, MoreVertical, CheckCircle2, PlayCircle } from 'lucide-react';
+import { Edit2, Trash2, FolderOpen, Calendar, MoreVertical, CheckCircle2, PlayCircle, Target } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { AnimatedProgressBar } from '@/components/AnimatedProgressBar';
+import { useState, useEffect } from 'react';
 import { useProjects } from '@/hooks/useProjects';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 interface ProjectCardProps {
-  project: Project;
-  onEdit: (project: Project) => void;
+  project: ProjectWithProgress;
+  onEdit: (project: ProjectWithProgress) => void;
 }
 
 export const ProjectCard = ({ project, onEdit }: ProjectCardProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showCompletionAnimation, setShowCompletionAnimation] = useState(false);
+  const [previousProgress, setPreviousProgress] = useState(project.progressPercentage);
   const { deleteProject, updateProject } = useProjects();
+
+  // Trigger completion animation when project reaches 100%
+  useEffect(() => {
+    if (project.progressPercentage === 100 && previousProgress < 100 && project.totalTasks > 0) {
+      setShowCompletionAnimation(true);
+      // Auto-update project status to completed
+      if (project.status !== 'completed') {
+        updateProject(project.id, { status: 'completed' });
+      }
+      // Hide animation after 3 seconds
+      setTimeout(() => setShowCompletionAnimation(false), 3000);
+    } else if (project.progressPercentage < 100 && previousProgress === 100) {
+      // Revert status if no longer at 100%
+      if (project.status === 'completed') {
+        updateProject(project.id, { status: 'active' });
+      }
+    }
+    setPreviousProgress(project.progressPercentage);
+  }, [project.progressPercentage, previousProgress, project.totalTasks, project.status, updateProject, project.id]);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -38,17 +61,21 @@ export const ProjectCard = ({ project, onEdit }: ProjectCardProps) => {
     }
   };
 
-  const getStatusConfig = (status: string) => {
-    switch (status) {
+  const getStatusConfig = (status: string, progressPercentage: number) => {
+    // Override status display based on progress
+    const isComplete = progressPercentage === 100 && project.totalTasks > 0;
+    const displayStatus = isComplete ? 'completed' : status;
+    
+    switch (displayStatus) {
       case 'active':
         return {
-          color: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
-          icon: '🟢',
-          label: 'Active'
+          color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+          icon: '🔄',
+          label: 'In Progress'
         };
       case 'completed':
         return {
-          color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
+          color: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
           icon: '✅',
           label: 'Completed'
         };
@@ -67,30 +94,53 @@ export const ProjectCard = ({ project, onEdit }: ProjectCardProps) => {
     }
   };
 
-  const statusConfig = getStatusConfig(project.status);
+  const statusConfig = getStatusConfig(project.status, project.progressPercentage);
+  const isCompleted = project.progressPercentage === 100 && project.totalTasks > 0;
 
   return (
-    <Card className={`group hover:shadow-lg transition-all duration-200 border-l-4 hover:border-l-primary/80 ${
-      project.status === 'completed' ? 'opacity-80' : ''
-    }`} style={{ borderLeftColor: project.color }}>
-      <CardHeader className="pb-3">
+    <Card className={cn(
+      "group hover:shadow-lg transition-all duration-300 border-l-4 hover:border-l-primary/80 relative overflow-hidden",
+      isCompleted ? "ring-2 ring-green-500/50 shadow-green-100 dark:shadow-green-900/20" : "",
+      showCompletionAnimation ? "animate-pulse" : ""
+    )} style={{ borderLeftColor: project.color }}>
+      {/* Completion celebration overlay */}
+      {showCompletionAnimation && (
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-blue-500/10 animate-fade-in z-10" />
+      )}
+      
+      <CardHeader className="pb-3 relative z-20">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div 
-              className="w-6 h-6 rounded-full flex-shrink-0 ring-2 ring-offset-2 ring-offset-background ring-gray-200 dark:ring-gray-700"
+              className={cn(
+                "w-6 h-6 rounded-full flex-shrink-0 ring-2 ring-offset-2 ring-offset-background transition-all duration-300",
+                isCompleted ? "ring-green-200 dark:ring-green-700 shadow-lg" : "ring-gray-200 dark:ring-gray-700"
+              )}
               style={{ backgroundColor: project.color }}
-            />
+            >
+              {isCompleted && (
+                <div className="w-full h-full rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="h-4 w-4 text-white animate-scale-in" />
+                </div>
+              )}
+            </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className={`text-lg font-semibold truncate ${
-                project.status === 'completed' ? 'line-through text-muted-foreground' : ''
-              }`}>
+              <CardTitle className={cn(
+                "text-lg font-semibold truncate transition-all duration-300",
+                isCompleted ? "text-green-700 dark:text-green-400" : ""
+              )}>
                 {project.name}
               </CardTitle>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className={`text-xs font-medium ${statusConfig.color}`}>
+                <Badge variant="outline" className={cn("text-xs font-medium transition-colors duration-300", statusConfig.color)}>
                   <span className="mr-1">{statusConfig.icon}</span>
                   {statusConfig.label}
                 </Badge>
+                {showCompletionAnimation && (
+                  <Badge variant="outline" className="text-xs font-medium bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 animate-fade-in">
+                    🎉 Project Complete!
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
@@ -174,14 +224,46 @@ export const ProjectCard = ({ project, onEdit }: ProjectCardProps) => {
         </div>
       </CardHeader>
       
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 relative z-20">
         {project.description && (
-          <p className={`text-sm text-muted-foreground mb-4 line-clamp-3 ${
-            project.status === 'completed' ? 'opacity-75' : ''
-          }`}>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
             {project.description}
           </p>
         )}
+        
+        {/* Task Progress Section */}
+        <div className="mb-4">
+          {project.totalTasks === 0 ? (
+            <div className="text-center py-3">
+              <Target className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No tasks yet</p>
+              <p className="text-xs text-muted-foreground opacity-75">Add tasks to track progress</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium flex items-center gap-1">
+                  <Target className="h-4 w-4" />
+                  Task Progress
+                </span>
+                <span className={cn(
+                  "font-medium transition-colors duration-300",
+                  isCompleted ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                )}>
+                  {project.completedTasks} of {project.totalTasks} tasks
+                </span>
+              </div>
+              
+              <AnimatedProgressBar
+                value={project.progressPercentage}
+                type="radial"
+                showAnimation={true}
+                showShimmer={project.progressPercentage > 0 && project.progressPercentage < 100}
+                className="mx-auto w-fit"
+              />
+            </div>
+          )}
+        </div>
         
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-1">

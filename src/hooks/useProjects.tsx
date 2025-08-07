@@ -1,34 +1,75 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Project, ProjectFilters } from '@/types/project';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
+export interface ProjectWithProgress extends Project {
+  totalTasks: number;
+  completedTasks: number;
+  progressPercentage: number;
+}
+
 export const useProjects = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjectsWithProgress = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
     }
 
     try {
-      console.log('Fetching projects for user:', user.id);
-      const { data, error } = await supabase
+      console.log('Fetching projects with progress for user:', user.id);
+      
+      // Fetch projects
+      const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      console.log('Fetched projects:', data?.length || 0);
-      setProjects((data || []) as Project[]);
+      if (projectsError) throw projectsError;
+
+      // For each project, calculate task progress
+      const projectsWithProgress: ProjectWithProgress[] = await Promise.all(
+        (projectsData || []).map(async (project) => {
+          const { data: tasks, error: tasksError } = await supabase
+            .from('tasks')
+            .select('id, status')
+            .eq('project_id', project.id)
+            .eq('user_id', user.id)
+            .is('parent_task_id', null); // Only main tasks
+
+          if (tasksError) {
+            console.error('Error fetching tasks for project:', project.id, tasksError);
+            return {
+              ...project,
+              totalTasks: 0,
+              completedTasks: 0,
+              progressPercentage: 0,
+            };
+          }
+
+          const totalTasks = tasks?.length || 0;
+          const completedTasks = tasks?.filter(task => task.status === 'complete').length || 0;
+          const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+          return {
+            ...project,
+            totalTasks,
+            completedTasks,
+            progressPercentage,
+          };
+        })
+      );
+
+      console.log('Fetched projects with progress:', projectsWithProgress.length);
+      setProjects(projectsWithProgress);
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching projects with progress:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch projects',
@@ -40,15 +81,17 @@ export const useProjects = () => {
   }, [user]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    fetchProjectsWithProgress();
+  }, [fetchProjectsWithProgress]);
 
-  // Enhanced real-time subscription with better event handling
+  // Enhanced real-time subscription with task updates
   useEffect(() => {
     if (!user) return;
 
-    console.log('Setting up real-time subscription for projects');
-    const channel = supabase
+    console.log('Setting up real-time subscriptions for projects and tasks');
+    
+    // Projects subscription
+    const projectsChannel = supabase
       .channel('projects-realtime')
       .on(
         'postgres_changes',
@@ -60,29 +103,39 @@ export const useProjects = () => {
         },
         (payload) => {
           console.log('Real-time project update:', payload.eventType, payload);
-          
-          // Handle different event types for immediate UI updates
-          if (payload.eventType === 'INSERT') {
-            console.log('Project inserted:', payload.new);
-            setProjects(prev => [payload.new as Project, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            console.log('Project updated:', payload.new);
-            setProjects(prev => prev.map(project => 
-              project.id === payload.new.id ? payload.new as Project : project
-            ));
-          } else if (payload.eventType === 'DELETE') {
-            console.log('Project deleted:', payload.old);
-            setProjects(prev => prev.filter(project => project.id !== payload.old.id));
+          fetchProjectsWithProgress(); // Refresh all projects with progress
+        }
+      )
+      .subscribe();
+
+    // Tasks subscription to update project progress when tasks change
+    const tasksChannel = supabase
+      .channel('tasks-realtime-projects')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Real-time task update affecting projects:', payload.eventType, payload);
+          // Only refresh if the task has a project_id
+          const taskData = payload.new || payload.old;
+          if (taskData?.project_id) {
+            fetchProjectsWithProgress(); // Refresh all projects with progress
           }
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up projects real-time subscription');
-      supabase.removeChannel(channel);
+      console.log('Cleaning up projects and tasks real-time subscriptions');
+      supabase.removeChannel(projectsChannel);
+      supabase.removeChannel(tasksChannel);
     };
-  }, [user]);
+  }, [user, fetchProjectsWithProgress]);
 
   const createProject = async (projectData: Partial<Project>) => {
     if (!user || !projectData.name) return;
@@ -177,7 +230,7 @@ export const useProjects = () => {
     }
   };
 
-  const filterProjects = (filters: ProjectFilters): Project[] => {
+  const filterProjects = (filters: ProjectFilters): ProjectWithProgress[] => {
     return projects.filter(project => {
       // Search filter
       if (filters.search) {
