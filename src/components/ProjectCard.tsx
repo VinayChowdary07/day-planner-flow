@@ -257,7 +257,6 @@ export const ProjectCard = ({ project, onEdit }: ProjectCardProps) => {
               <AnimatedProgressBar
                 value={project.progressPercentage}
                 type="radial"
-                showAnimation={true}
                 showShimmer={project.progressPercentage > 0 && project.progressPercentage < 100}
                 className="mx-auto w-fit"
               />

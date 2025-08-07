@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Project, ProjectFilters } from '@/types/project';
@@ -47,6 +48,7 @@ export const useProjects = () => {
             console.error('Error fetching tasks for project:', project.id, tasksError);
             return {
               ...project,
+              status: project.status as 'active' | 'completed' | 'archived',
               totalTasks: 0,
               completedTasks: 0,
               progressPercentage: 0,
@@ -59,6 +61,7 @@ export const useProjects = () => {
 
           return {
             ...project,
+            status: project.status as 'active' | 'completed' | 'archived',
             totalTasks,
             completedTasks,
             progressPercentage,
@@ -122,7 +125,7 @@ export const useProjects = () => {
         (payload) => {
           console.log('Real-time task update affecting projects:', payload.eventType, payload);
           // Only refresh if the task has a project_id
-          const taskData = payload.new || payload.old;
+          const taskData = payload.new as any || payload.old as any;
           if (taskData?.project_id) {
             fetchProjectsWithProgress(); // Refresh all projects with progress
           }
