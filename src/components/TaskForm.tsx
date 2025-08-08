@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,8 +59,8 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
       category: 'general',
       recurrence: 'none',
       recurrence_end_date: '',
-      project_id: '',
-      goal_id: '',
+      project_id: undefined,
+      goal_id: undefined,
     },
   });
 
@@ -79,8 +78,8 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
         category: task.category,
         recurrence: task.recurrence || 'none',
         recurrence_end_date: task.recurrence_end_date || '',
-        project_id: task.project_id || '',
-        goal_id: task.goal_id || '',
+        project_id: task.project_id || undefined,
+        goal_id: task.goal_id || undefined,
       });
       setIsOpen(true);
     }
@@ -398,14 +397,14 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                           <FolderOpen className="h-3 w-3" />
                           📁 Linked Project
                         </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)} value={field.value || 'none'}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select project" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">
+                            <SelectItem value="none">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
                                 No project
@@ -438,14 +437,14 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                           <Target className="h-3 w-3" />
                           🎯 Linked Goal
                         </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)} value={field.value || 'none'}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select goal" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">
+                            <SelectItem value="none">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
                                 No goal
