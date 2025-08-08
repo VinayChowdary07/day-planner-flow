@@ -43,7 +43,6 @@ interface TaskFormProps {
 export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const { createTask, updateTask } = useTasks();
   const { projects } = useProjects();
   const { goals } = useGoals();
@@ -61,8 +60,8 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
       category: 'general',
       recurrence: 'none',
       recurrence_end_date: '',
-      project_id: 'none',
-      goal_id: 'none',
+      project_id: '',
+      goal_id: '',
     },
   });
 
@@ -80,8 +79,8 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
         category: task.category,
         recurrence: task.recurrence || 'none',
         recurrence_end_date: task.recurrence_end_date || '',
-        project_id: task.project_id || 'none',
-        goal_id: task.goal_id || 'none',
+        project_id: task.project_id || '',
+        goal_id: task.goal_id || '',
       });
       setIsOpen(true);
     }
@@ -91,7 +90,6 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
     console.log('Submitting task form:', data);
     setLoading(true);
     try {
-      // Clean the data before sending
       const taskData: Partial<Task> = {
         title: data.title,
         description: data.description || null,
@@ -103,8 +101,8 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
         category: data.category,
         recurrence: data.recurrence === 'none' ? null : data.recurrence,
         recurrence_end_date: data.recurrence_end_date || null,
-        project_id: data.project_id === 'none' ? null : data.project_id,
-        goal_id: data.goal_id === 'none' ? null : data.goal_id,
+        project_id: data.project_id || null,
+        goal_id: data.goal_id || null,
         tags: [],
       };
 
@@ -136,35 +134,20 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
       } else {
         form.reset();
       }
-      setFocusedField(null);
     }
   };
-
-  const handleFieldFocus = (fieldName: string) => {
-    setFocusedField(fieldName);
-  };
-
-  const handleFieldBlur = () => {
-    setFocusedField(null);
-  };
-
-  // Get selected project and goal for display
-  const selectedProject = projects.find(p => p.id === form.watch('project_id'));
-  const selectedGoal = goals.find(g => g.id === form.watch('goal_id'));
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="group relative overflow-hidden bg-primary hover:bg-primary/90 transition-all duration-300 hover:scale-105 hover:shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-          <Plus className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:rotate-90" />
+        <Button className="bg-primary hover:bg-primary/90">
+          <Plus className="h-4 w-4 mr-2" />
           {task ? 'Edit Task' : 'Add Task'}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 animate-in fade-in-0 zoom-in-95 duration-300">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="flex-shrink-0 p-6 pb-0">
-          <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <DialogTitle className="text-xl font-semibold">
             {task ? 'Edit Task' : 'Create New Task'}
           </DialogTitle>
         </DialogHeader>
@@ -190,15 +173,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                         Title
                       </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="What needs to be done?"
-                          className={`transition-all duration-200 ${
-                            focusedField === 'title' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
-                          }`}
-                          onFocus={() => handleFieldFocus('title')}
-                          onBlur={handleFieldBlur}
-                          {...field} 
-                        />
+                        <Input placeholder="What needs to be done?" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -215,16 +190,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                         Description
                       </FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Add more details (optional)"
-                          className={`resize-none transition-all duration-200 ${
-                            focusedField === 'description' ? 'ring-2 ring-primary/50 scale-[1.01]' : ''
-                          }`}
-                          rows={2}
-                          onFocus={() => handleFieldFocus('description')}
-                          onBlur={handleFieldBlur}
-                          {...field}
-                        />
+                        <Textarea placeholder="Add more details (optional)" rows={2} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -243,13 +209,11 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                         </FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger className={`transition-all duration-200 ${
-                              focusedField === 'priority' ? 'ring-2 ring-primary/50' : ''
-                            }`}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select priority" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-background border z-50">
+                          <SelectContent>
                             <SelectItem value="low">🟢 Low</SelectItem>
                             <SelectItem value="medium">🟡 Medium</SelectItem>
                             <SelectItem value="high">🔴 High</SelectItem>
@@ -268,13 +232,11 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                         <FormLabel>Category</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger className={`transition-all duration-200 ${
-                              focusedField === 'category' ? 'ring-2 ring-primary/50' : ''
-                            }`}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-background border z-50">
+                          <SelectContent>
                             <SelectItem value="general">📋 General</SelectItem>
                             <SelectItem value="work">💼 Work</SelectItem>
                             <SelectItem value="personal">👤 Personal</SelectItem>
@@ -298,15 +260,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                         Location
                       </FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Where will this happen? (optional)" 
-                          className={`transition-all duration-200 ${
-                            focusedField === 'location' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
-                          }`}
-                          onFocus={() => handleFieldFocus('location')}
-                          onBlur={handleFieldBlur}
-                          {...field} 
-                        />
+                        <Input placeholder="Where will this happen? (optional)" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -334,15 +288,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                           Date
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="date" 
-                            className={`transition-all duration-200 ${
-                              focusedField === 'task_date' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
-                            }`}
-                            onFocus={() => handleFieldFocus('task_date')}
-                            onBlur={handleFieldBlur}
-                            {...field} 
-                          />
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -359,15 +305,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                           Start Time
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
-                            className={`transition-all duration-200 ${
-                              focusedField === 'start_time' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
-                            }`}
-                            onFocus={() => handleFieldFocus('start_time')}
-                            onBlur={handleFieldBlur}
-                            {...field} 
-                          />
+                          <Input type="time" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -384,15 +322,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                           End Time
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
-                            className={`transition-all duration-200 ${
-                              focusedField === 'end_time' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
-                            }`}
-                            onFocus={() => handleFieldFocus('end_time')}
-                            onBlur={handleFieldBlur}
-                            {...field} 
-                          />
+                          <Input type="time" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -412,13 +342,11 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                         </FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger className={`transition-all duration-200 ${
-                              focusedField === 'recurrence' ? 'ring-2 ring-primary/50' : ''
-                            }`}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select recurrence" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-background border z-50">
+                          <SelectContent>
                             <SelectItem value="none">None</SelectItem>
                             <SelectItem value="daily">Daily</SelectItem>
                             <SelectItem value="weekly">Weekly</SelectItem>
@@ -435,21 +363,13 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                       control={form.control}
                       name="recurrence_end_date"
                       render={({ field }) => (
-                        <FormItem className="animate-in slide-in-from-left-5 duration-200">
+                        <FormItem>
                           <FormLabel className="flex items-center gap-2">
                             <Calendar className="h-3 w-3" />
                             End Date
                           </FormLabel>
                           <FormControl>
-                            <Input 
-                              type="date" 
-                              className={`transition-all duration-200 ${
-                                focusedField === 'recurrence_end_date' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
-                              }`}
-                              onFocus={() => handleFieldFocus('recurrence_end_date')}
-                              onBlur={handleFieldBlur}
-                              {...field} 
-                            />
+                            <Input type="date" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -461,7 +381,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
 
               <Separator />
 
-              {/* Links Section - Enhanced */}
+              {/* Links Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Link className="h-4 w-4" />
@@ -478,16 +398,14 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                           <FolderOpen className="h-3 w-3" />
                           📁 Linked Project
                         </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger className={`transition-all duration-200 ${
-                              focusedField === 'project_id' ? 'ring-2 ring-primary/50' : ''
-                            }`}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select project" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-background border z-50">
-                            <SelectItem value="none">
+                          <SelectContent>
+                            <SelectItem value="">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
                                 No project
@@ -501,9 +419,6 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                                     style={{ backgroundColor: project.color }}
                                   />
                                   <span className="truncate">{project.name}</span>
-                                  <span className="text-xs text-muted-foreground ml-auto">
-                                    {project.completedTasks}/{project.totalTasks}
-                                  </span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -523,16 +438,14 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                           <Target className="h-3 w-3" />
                           🎯 Linked Goal
                         </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger className={`transition-all duration-200 ${
-                              focusedField === 'goal_id' ? 'ring-2 ring-primary/50' : ''
-                            }`}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select goal" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-background border z-50">
-                            <SelectItem value="none">
+                          <SelectContent>
+                            <SelectItem value="">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
                                 No goal
@@ -553,46 +466,6 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                     )}
                   />
                 </div>
-
-                {/* Enhanced Link Preview */}
-                {(selectedProject || selectedGoal) && (
-                  <div className="p-4 rounded-lg bg-muted/30 border border-primary/20 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Link className="h-4 w-4 text-primary" />
-                        </div>
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <h4 className="font-medium text-sm flex items-center gap-2">
-                          <span>🔗 Task Connections</span>
-                        </h4>
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          {selectedProject && (
-                            <div className="flex items-center gap-2">
-                              <FolderOpen className="h-3 w-3" />
-                              <span>Contributing to project:</span>
-                              <div className="flex items-center gap-1">
-                                <div 
-                                  className="w-2 h-2 rounded-full" 
-                                  style={{ backgroundColor: selectedProject.color }}
-                                />
-                                <span className="font-medium">{selectedProject.name}</span>
-                              </div>
-                            </div>
-                          )}
-                          {selectedGoal && (
-                            <div className="flex items-center gap-2">
-                              <Target className="h-3 w-3" />
-                              <span>Working towards goal:</span>
-                              <span className="font-medium">{selectedGoal.title}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </form>
           </Form>
@@ -604,25 +477,22 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
             type="button" 
             variant="outline" 
             onClick={() => handleOpenChange(false)} 
-            className="flex-1 transition-all duration-200 hover:scale-105"
+            className="flex-1"
           >
             Cancel
           </Button>
           <Button 
             onClick={form.handleSubmit(handleSubmit)} 
             disabled={loading} 
-            className="flex-1 group relative overflow-hidden transition-all duration-200 hover:scale-105 disabled:scale-100 bg-primary hover:bg-primary/90"
+            className="flex-1 bg-primary hover:bg-primary/90"
           >
-            <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0 translate-x-[-100%] transition-transform duration-700 ${!loading ? 'group-hover:translate-x-[100%]' : ''}`} />
             {loading ? (
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Saving...
               </div>
             ) : (
-              <span className="relative z-10">
-                {task ? 'Update Task' : 'Create Task'}
-              </span>
+              <span>{task ? 'Update Task' : 'Create Task'}</span>
             )}
           </Button>
         </div>
