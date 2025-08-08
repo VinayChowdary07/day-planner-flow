@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -160,7 +161,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
           {task ? 'Edit Task' : 'Add Task'}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 animate-in fade-in-0 zoom-in-95 duration-200">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 animate-in fade-in-0 zoom-in-95 duration-300">
         <DialogHeader className="flex-shrink-0 p-6 pb-0">
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -168,15 +169,15 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 px-6 max-h-[calc(90vh-140px)]">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 py-4">
               
-              {/* Basic Details Section */}
+              {/* Task Details Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <FileText className="h-4 w-4" />
-                  <span>Task Details</span>
+                  <span>📝 Task Details</span>
                 </div>
                 
                 <FormField
@@ -229,15 +230,97 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Flag className="h-3 w-3" />
+                          Priority
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className={`transition-all duration-200 ${
+                              focusedField === 'priority' ? 'ring-2 ring-primary/50' : ''
+                            }`}>
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-background border z-50">
+                            <SelectItem value="low">🟢 Low</SelectItem>
+                            <SelectItem value="medium">🟡 Medium</SelectItem>
+                            <SelectItem value="high">🔴 High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className={`transition-all duration-200 ${
+                              focusedField === 'category' ? 'ring-2 ring-primary/50' : ''
+                            }`}>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-background border z-50">
+                            <SelectItem value="general">📋 General</SelectItem>
+                            <SelectItem value="work">💼 Work</SelectItem>
+                            <SelectItem value="personal">👤 Personal</SelectItem>
+                            <SelectItem value="health">🏥 Health</SelectItem>
+                            <SelectItem value="finance">💰 Finance</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3" />
+                        Location
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Where will this happen? (optional)" 
+                          className={`transition-all duration-200 ${
+                            focusedField === 'location' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
+                          }`}
+                          onFocus={() => handleFieldFocus('location')}
+                          onBlur={handleFieldBlur}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <Separator />
 
-              {/* Timing Section */}
+              {/* Timing & Schedule Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  <span>Timing & Schedule</span>
+                  <span>⏰ Timing & Schedule</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -335,7 +418,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                               <SelectValue placeholder="Select recurrence" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="bg-background border z-50">
                             <SelectItem value="none">None</SelectItem>
                             <SelectItem value="daily">Daily</SelectItem>
                             <SelectItem value="weekly">Weekly</SelectItem>
@@ -378,103 +461,11 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
 
               <Separator />
 
-              {/* Organization Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Flag className="h-4 w-4" />
-                  <span>Organization</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Flag className="h-3 w-3" />
-                          Priority
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className={`transition-all duration-200 ${
-                              focusedField === 'priority' ? 'ring-2 ring-primary/50' : ''
-                            }`}>
-                              <SelectValue placeholder="Select priority" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="low">🟢 Low</SelectItem>
-                            <SelectItem value="medium">🟡 Medium</SelectItem>
-                            <SelectItem value="high">🔴 High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className={`transition-all duration-200 ${
-                              focusedField === 'category' ? 'ring-2 ring-primary/50' : ''
-                            }`}>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="general">📋 General</SelectItem>
-                            <SelectItem value="work">💼 Work</SelectItem>
-                            <SelectItem value="personal">👤 Personal</SelectItem>
-                            <SelectItem value="health">🏥 Health</SelectItem>
-                            <SelectItem value="finance">💰 Finance</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3" />
-                        Location
-                      </FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Where will this happen? (optional)" 
-                          className={`transition-all duration-200 ${
-                            focusedField === 'location' ? 'ring-2 ring-primary/50 scale-[1.02]' : ''
-                          }`}
-                          onFocus={() => handleFieldFocus('location')}
-                          onBlur={handleFieldBlur}
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Separator />
-
               {/* Links Section - Enhanced */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Link className="h-4 w-4" />
-                  <span>🧩 Links & Relationships</span>
+                  <span>🔗 Links</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -607,6 +598,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
           </Form>
         </ScrollArea>
 
+        {/* Fixed Footer Buttons */}
         <div className="flex gap-3 p-6 pt-4 border-t flex-shrink-0 bg-background/95 backdrop-blur-sm">
           <Button 
             type="button" 
@@ -619,7 +611,7 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
           <Button 
             onClick={form.handleSubmit(handleSubmit)} 
             disabled={loading} 
-            className="flex-1 group relative overflow-hidden transition-all duration-200 hover:scale-105 disabled:scale-100"
+            className="flex-1 group relative overflow-hidden transition-all duration-200 hover:scale-105 disabled:scale-100 bg-primary hover:bg-primary/90"
           >
             <div className={`absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0 translate-x-[-100%] transition-transform duration-700 ${!loading ? 'group-hover:translate-x-[100%]' : ''}`} />
             {loading ? (
