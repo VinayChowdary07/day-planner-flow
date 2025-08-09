@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -144,150 +145,36 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
           {task ? 'Edit Task' : 'Add Task'}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="flex-shrink-0 p-6 pb-0">
+      <DialogContent className="max-w-3xl max-h-[95vh] w-[95vw] p-0">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="text-xl font-semibold">
             {task ? 'Edit Task' : 'Create New Task'}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 max-h-[calc(90vh-140px)]">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 py-4">
-              
-              {/* Task Details Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <FileText className="h-4 w-4" />
-                  <span>📝 Task Details</span>
-                </div>
+        <div className="flex flex-col h-full max-h-[calc(95vh-120px)]">
+          <ScrollArea className="flex-1 px-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8 py-6">
                 
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Type className="h-3 w-3" />
-                        Title
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="What needs to be done?" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <AlignLeft className="h-3 w-3" />
-                        Description
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Add more details (optional)" rows={2} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Task Details Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                    <FileText className="h-4 w-4" />
+                    <span>📝 Task Details</span>
+                  </div>
+                  
                   <FormField
                     control={form.control}
-                    name="priority"
+                    name="title"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
-                          <Flag className="h-3 w-3" />
-                          Priority
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select priority" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="low">🟢 Low</SelectItem>
-                            <SelectItem value="medium">🟡 Medium</SelectItem>
-                            <SelectItem value="high">🔴 High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="general">📋 General</SelectItem>
-                            <SelectItem value="work">💼 Work</SelectItem>
-                            <SelectItem value="personal">👤 Personal</SelectItem>
-                            <SelectItem value="health">🏥 Health</SelectItem>
-                            <SelectItem value="finance">💰 Finance</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3" />
-                        Location
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="Where will this happen? (optional)" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Timing & Schedule Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>⏰ Timing & Schedule</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="task_date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Calendar className="h-3 w-3" />
-                          Date
+                          <Type className="h-4 w-4" />
+                          Title
                         </FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input placeholder="What needs to be done?" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -296,76 +183,110 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
 
                   <FormField
                     control={form.control}
-                    name="start_time"
+                    name="description"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          Start Time
+                          <AlignLeft className="h-4 w-4" />
+                          Description
                         </FormLabel>
                         <FormControl>
-                          <Input type="time" {...field} />
+                          <Textarea placeholder="Add more details (optional)" rows={3} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="end_time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          End Time
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="recurrence"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Repeat className="h-3 w-3" />
-                          Recurrence
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select recurrence" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {form.watch('recurrence') !== 'none' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="recurrence_end_date"
+                      name="priority"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="flex items-center gap-2">
-                            <Calendar className="h-3 w-3" />
-                            End Date
+                            <Flag className="h-4 w-4" />
+                            Priority
+                          </FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select priority" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">🟢 Low</SelectItem>
+                              <SelectItem value="medium">🟡 Medium</SelectItem>
+                              <SelectItem value="high">🔴 High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="general">📋 General</SelectItem>
+                              <SelectItem value="work">💼 Work</SelectItem>
+                              <SelectItem value="personal">👤 Personal</SelectItem>
+                              <SelectItem value="health">🏥 Health</SelectItem>
+                              <SelectItem value="finance">💰 Finance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          Location
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="Where will this happen? (optional)" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator className="my-8" />
+
+                {/* Timing & Schedule Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                    <Clock className="h-4 w-4" />
+                    <span>⏰ Timing & Schedule</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="task_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Date
                           </FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
@@ -374,126 +295,211 @@ export const TaskForm = ({ task, onSuccess, onCancel }: TaskFormProps) => {
                         </FormItem>
                       )}
                     />
-                  )}
-                </div>
-              </div>
 
-              <Separator />
-
-              {/* Links Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Link className="h-4 w-4" />
-                  <span>🔗 Links</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="project_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <FolderOpen className="h-3 w-3" />
-                          📁 Linked Project
-                        </FormLabel>
-                        <Select onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)} value={field.value || 'none'}>
+                    <FormField
+                      control={form.control}
+                      name="start_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Start Time
+                          </FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select project" />
-                            </SelectTrigger>
+                            <Input type="time" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
-                                No project
-                              </div>
-                            </SelectItem>
-                            {projects.map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
-                                <div className="flex items-center gap-2">
-                                  <div 
-                                    className="w-3 h-3 rounded-full shadow-sm" 
-                                    style={{ backgroundColor: project.color }}
-                                  />
-                                  <span className="truncate">{project.name}</span>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="end_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            End Time
+                          </FormLabel>
+                          <FormControl>
+                            <Input type="time" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="recurrence"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Repeat className="h-4 w-4" />
+                            Recurrence
+                          </FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select recurrence" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="daily">Daily</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {form.watch('recurrence') !== 'none' && (
+                      <FormField
+                        control={form.control}
+                        name="recurrence_end_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              End Date
+                            </FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <Separator className="my-8" />
+
+                {/* Links Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                    <Link className="h-4 w-4" />
+                    <span>🔗 Links</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="project_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <FolderOpen className="h-4 w-4" />
+                            📁 Linked Project
+                          </FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)} value={field.value || 'none'}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select project" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
+                                  No project
                                 </div>
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                              {projects.map((project) => (
+                                <SelectItem key={project.id} value={project.id}>
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-3 h-3 rounded-full shadow-sm" 
+                                      style={{ backgroundColor: project.color }}
+                                    />
+                                    <span className="truncate">{project.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="goal_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Target className="h-3 w-3" />
-                          🎯 Linked Goal
-                        </FormLabel>
-                        <Select onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)} value={field.value || 'none'}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select goal" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
-                                No goal
-                              </div>
-                            </SelectItem>
-                            {goals.map((goal) => (
-                              <SelectItem key={goal.id} value={goal.id}>
-                                <div className="flex items-center gap-2">
-                                  <Target className="h-3 w-3 text-primary" />
-                                  <span className="truncate">{goal.title}</span>
+                    <FormField
+                      control={form.control}
+                      name="goal_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Target className="h-4 w-4" />
+                            🎯 Linked Goal
+                          </FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)} value={field.value || 'none'}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select goal" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <div className="w-3 h-3 rounded-full border border-dashed border-muted-foreground" />
+                                  No goal
                                 </div>
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                              {goals.map((goal) => (
+                                <SelectItem key={goal.id} value={goal.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Target className="h-4 w-4 text-primary" />
+                                    <span className="truncate">{goal.title}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
 
-        {/* Fixed Footer Buttons */}
-        <div className="flex gap-3 p-6 pt-4 border-t flex-shrink-0 bg-background/95 backdrop-blur-sm">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => handleOpenChange(false)} 
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={form.handleSubmit(handleSubmit)} 
-            disabled={loading} 
-            className="flex-1 bg-primary hover:bg-primary/90"
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </div>
-            ) : (
-              <span>{task ? 'Update Task' : 'Create Task'}</span>
-            )}
-          </Button>
+                {/* Add some bottom padding for better scrolling */}
+                <div className="h-4" />
+              </form>
+            </Form>
+          </ScrollArea>
+
+          {/* Fixed Footer Buttons */}
+          <div className="flex gap-3 p-6 pt-4 border-t bg-background/95 backdrop-blur-sm flex-shrink-0">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => handleOpenChange(false)} 
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={form.handleSubmit(handleSubmit)} 
+              disabled={loading} 
+              className="flex-1 bg-primary hover:bg-primary/90"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </div>
+              ) : (
+                <span>{task ? 'Update Task' : 'Create Task'}</span>
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
