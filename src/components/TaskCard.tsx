@@ -74,22 +74,30 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
   // Check if this task has subtasks
   const hasSubtasks = progress?.has_subtasks || false;
 
-  const handleCheckboxClick = () => {
+  // Reusable function to toggle task completion
+  const toggleTaskCompletion = (taskId: string, isCompleted: boolean) => {
     if (hasSubtasks) {
-      // Use the new toggle function that handles subtasks
+      // Use the subtask toggle function for tasks with subtasks
       toggleMainTaskComplete();
     } else {
-      // Use the original toggle for tasks without subtasks
-      onToggleComplete(task.id);
+      // Use the parent toggle function for regular tasks
+      onToggleComplete(taskId);
     }
   };
+
+  const handleCheckboxClick = () => {
+    const isCurrentlyCompleted = task.status === 'complete';
+    toggleTaskCompletion(task.id, isCurrentlyCompleted);
+  };
+
+  const isCompleted = task.status === 'complete';
 
   return (
     <Card className={`
       relative overflow-hidden transition-all duration-500 ease-out
       ${getCardStyle(task.status, task.priority)}
       ${isDragging ? 'scale-105 rotate-1 shadow-2xl z-50' : 'hover:shadow-lg hover:shadow-primary/5'}
-      ${task.status === 'complete' ? 'opacity-75' : ''}
+      ${isCompleted ? 'opacity-75' : ''}
       group border-l-4 ${
         task.priority === 'high' ? 'border-l-red-400 dark:border-l-red-500' :
         task.priority === 'medium' ? 'border-l-amber-400 dark:border-l-amber-500' :
@@ -106,11 +114,11 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
           <div className="flex-shrink-0 pt-0.5">
             <div className="relative">
               <Checkbox
-                checked={task.status === 'complete'}
+                checked={isCompleted}
                 onCheckedChange={handleCheckboxClick}
                 className="h-5 w-5 rounded-md border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-md hover:shadow-primary/20"
               />
-              {task.status === 'complete' && (
+              {isCompleted && (
                 <div className="absolute inset-0">
                   <TaskCompletionAnimation 
                     isCompleted={true} 
@@ -124,7 +132,7 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-start justify-between gap-3">
               <h3 className={`font-semibold text-base leading-6 transition-all duration-300 ${
-                task.status === 'complete' 
+                isCompleted 
                   ? 'line-through text-muted-foreground/70' 
                   : 'text-foreground group-hover:text-primary/90'
               }`}>
@@ -176,7 +184,7 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
             
             {task.description && (
               <p className={`text-sm leading-5 transition-all duration-300 ${
-                task.status === 'complete' 
+                isCompleted 
                   ? 'line-through text-muted-foreground/60' 
                   : 'text-muted-foreground'
               }`}>
