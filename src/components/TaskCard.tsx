@@ -9,7 +9,6 @@ import { Calendar, Clock, MapPin, Tag, Edit, Trash2, MoreVertical } from 'lucide
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SubtaskProgress } from '@/components/SubtaskProgress';
 import { SubtaskList } from '@/components/SubtaskList';
-import { TaskCompletionAnimation } from '@/components/TaskCompletionAnimation';
 import { useSubtasks } from '@/hooks/useSubtasks';
 
 interface TaskCardProps {
@@ -111,21 +110,11 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
         {/* Header Section */}
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 pt-1">
-            <div className="relative">
-              <Switch
-                checked={isCompleted}
-                onCheckedChange={handleToggleClick}
-                className="transition-all duration-300 data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 hover:shadow-md hover:shadow-primary/20"
-              />
-              {isCompleted && (
-                <div className="absolute -top-2 -left-2">
-                  <TaskCompletionAnimation 
-                    isCompleted={true} 
-                    showConfetti={true}
-                  />
-                </div>
-              )}
-            </div>
+            <Switch
+              checked={isCompleted}
+              onCheckedChange={handleToggleClick}
+              className="transition-all duration-300 data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 hover:shadow-md hover:shadow-primary/20"
+            />
           </div>
           
           <div className="flex-1 min-w-0 space-y-2">
