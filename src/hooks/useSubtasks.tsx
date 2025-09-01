@@ -87,7 +87,10 @@ export const useSubtasks = (parentTaskId: string) => {
         },
         (payload) => {
           console.log('Subtask real-time update:', payload);
-          fetchSubtasks();
+          // Add a small delay to ensure database consistency
+          setTimeout(() => {
+            fetchSubtasks();
+          }, 100);
         }
       )
       .subscribe();
@@ -162,54 +165,53 @@ export const useSubtasks = (parentTaskId: string) => {
     if (!user || !parentTaskId) return;
 
     try {
-      // Get current main task status
-      const { data: mainTask, error: fetchError } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('id', parentTaskId)
-        .single();
+      // Get current main task status and fresh subtasks data
+      const [mainTaskResult, subtasksResult] = await Promise.all([
+        supabase.from('tasks').select('*').eq('id', parentTaskId).single(),
+        supabase.from('tasks').select('*').eq('parent_task_id', parentTaskId).eq('user_id', user.id)
+      ]);
 
-      if (fetchError || !mainTask) {
-        console.error('Error fetching main task:', fetchError);
+      if (mainTaskResult.error || !mainTaskResult.data) {
+        console.error('Error fetching main task:', mainTaskResult.error);
         return;
       }
 
+      const mainTask = mainTaskResult.data;
+      const currentSubtasks = (subtasksResult.data || []) as Subtask[];
       const wasComplete = mainTask.status === 'complete';
       const newMainStatus = wasComplete ? 'incomplete' : 'complete';
       const newSubtaskStatus = wasComplete ? 'incomplete' : 'complete';
 
-      // Update main task status
-      const { error: mainTaskError } = await supabase
-        .from('tasks')
-        .update({ status: newMainStatus })
-        .eq('id', parentTaskId);
+      // Update both main task and all subtasks in parallel
+      const updatePromises = [
+        supabase.from('tasks').update({ status: newMainStatus }).eq('id', parentTaskId)
+      ];
 
-      if (mainTaskError) {
-        console.error('Error updating main task:', mainTaskError);
+      if (currentSubtasks.length > 0) {
+        updatePromises.push(
+          supabase.from('tasks')
+            .update({ status: newSubtaskStatus })
+            .eq('parent_task_id', parentTaskId)
+            .eq('user_id', user.id)
+        );
+      }
+
+      const results = await Promise.all(updatePromises);
+      
+      // Check for errors
+      const hasError = results.some(result => result.error);
+      if (hasError) {
+        console.error('Error updating tasks:', results.find(r => r.error)?.error);
         return;
       }
 
-      // Update all subtasks to match main task status
-      if (subtasks.length > 0) {
-        const { error: subtasksError } = await supabase
-          .from('tasks')
-          .update({ status: newSubtaskStatus })
-          .eq('parent_task_id', parentTaskId)
-          .eq('user_id', user.id);
-
-        if (subtasksError) {
-          console.error('Error updating subtasks:', subtasksError);
-          return;
-        }
-
-        // Update local state
-        const updatedSubtasks = subtasks.map(s => ({ 
-          ...s, 
-          status: newSubtaskStatus as 'complete' | 'incomplete' 
-        }));
-        setSubtasks(updatedSubtasks);
-        setProgress(calculateProgress(updatedSubtasks));
-      }
+      // Update local state immediately for responsive UI
+      const updatedSubtasks = currentSubtasks.map(s => ({ 
+        ...s, 
+        status: newSubtaskStatus as 'complete' | 'incomplete' 
+      }));
+      setSubtasks(updatedSubtasks);
+      setProgress(calculateProgress(updatedSubtasks));
 
       // Handle XP changes
       if (!wasComplete) {
@@ -217,14 +219,14 @@ export const useSubtasks = (parentTaskId: string) => {
         await awardXP(mainTask.priority as 'low' | 'medium' | 'high');
         toast({
           title: 'Task Completed!',
-          description: subtasks.length > 0 ? 'All subtasks marked complete. XP awarded!' : 'Task completed. XP awarded!',
+          description: currentSubtasks.length > 0 ? 'All subtasks marked complete. XP awarded!' : 'Task completed. XP awarded!',
         });
       } else {
         // Task became incomplete - deduct XP
         await deductXP(mainTask.priority as 'low' | 'medium' | 'high');
         toast({
           title: 'Task reverted to Incomplete',
-          description: subtasks.length > 0 ? 'All subtasks marked incomplete. XP updated.' : 'Task incomplete. XP updated.',
+          description: currentSubtasks.length > 0 ? 'All subtasks marked incomplete. XP updated.' : 'Task incomplete. XP updated.',
           variant: 'destructive',
         });
       }
@@ -237,7 +239,7 @@ export const useSubtasks = (parentTaskId: string) => {
         variant: 'destructive',
       });
     }
-  }, [user, parentTaskId, subtasks, awardXP, deductXP, calculateProgress]);
+  }, [user, parentTaskId, awardXP, deductXP, calculateProgress]);
 
   const createSubtask = async (title: string) => {
     if (!user || !parentTaskId || !title.trim()) return;
@@ -300,6 +302,7 @@ export const useSubtasks = (parentTaskId: string) => {
 
       if (error) throw error;
 
+      // Update local state immediately for responsive UI
       const updatedSubtasks = subtasks.map(s =>
         s.id === subtaskId ? { ...s, status: newStatus as 'complete' | 'incomplete' } : s
       );
@@ -310,6 +313,11 @@ export const useSubtasks = (parentTaskId: string) => {
       
       // Update main task status based on new subtask progress
       await updateMainTaskStatus(newProgress);
+
+      // Refresh data to ensure consistency
+      setTimeout(() => {
+        fetchSubtasks();
+      }, 200);
 
     } catch (error) {
       console.error('Error toggling subtask:', error);
