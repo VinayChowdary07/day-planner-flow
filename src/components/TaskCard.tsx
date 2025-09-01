@@ -4,7 +4,7 @@ import { Task } from '@/types/task';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Calendar, Clock, MapPin, Tag, Edit, Trash2, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SubtaskProgress } from '@/components/SubtaskProgress';
@@ -85,9 +85,8 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
     }
   };
 
-  const handleCheckboxClick = () => {
-    const isCurrentlyCompleted = task.status === 'complete';
-    toggleTaskCompletion(task.id, isCurrentlyCompleted);
+  const handleToggleClick = (checked: boolean) => {
+    toggleTaskCompletion(task.id, !checked);
   };
 
   const isCompleted = task.status === 'complete';
@@ -111,15 +110,15 @@ export const TaskCard = ({ task, onEdit, onDelete, onToggleComplete, isDragging 
       <div className="relative p-5 space-y-4">
         {/* Header Section */}
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 pt-0.5">
+          <div className="flex-shrink-0 pt-1">
             <div className="relative">
-              <Checkbox
+              <Switch
                 checked={isCompleted}
-                onCheckedChange={handleCheckboxClick}
-                className="h-5 w-5 rounded-md border-2 transition-all duration-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-500 hover:border-primary/60 hover:shadow-md hover:shadow-primary/20"
+                onCheckedChange={handleToggleClick}
+                className="transition-all duration-300 data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 hover:shadow-md hover:shadow-primary/20"
               />
               {isCompleted && (
-                <div className="absolute inset-0">
+                <div className="absolute -top-2 -left-2">
                   <TaskCompletionAnimation 
                     isCompleted={true} 
                     showConfetti={true}
