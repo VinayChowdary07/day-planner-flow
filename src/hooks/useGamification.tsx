@@ -167,10 +167,7 @@ export const useGamification = () => {
       if (error) throw error;
       setUserStats(updatedStats as UserStats);
 
-      // Check for new achievements
-      await checkAndAwardAchievements(newTotalXP, newStreak, newLevel);
-
-      // Show XP toast
+      // Show XP toast immediately
       toast({
         title: `+${xpToAward} XP!`,
         description: `Task completed! Total XP: ${newTotalXP}`,
@@ -183,6 +180,11 @@ export const useGamification = () => {
           description: `Congratulations! You're now level ${newLevel}!`,
         });
       }
+
+      // Check for new achievements asynchronously
+      setTimeout(() => {
+        checkAndAwardAchievements(newTotalXP, newStreak, newLevel);
+      }, 0);
 
     } catch (error) {
       console.error('Error awarding XP:', error);

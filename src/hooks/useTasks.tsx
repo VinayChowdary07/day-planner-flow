@@ -75,7 +75,11 @@ export const useTasks = () => {
             console.log('Task inserted:', payload.new);
             // Only add to main tasks if it's not a subtask
             if (!taskData?.parent_task_id) {
-              setTasks(prev => [payload.new as Task, ...prev]);
+              setTasks(prev => {
+                // Avoid duplicates
+                if (prev.find(t => t.id === taskData.id)) return prev;
+                return [payload.new as Task, ...prev];
+              });
             }
           } else if (payload.eventType === 'UPDATE') {
             console.log('Task updated:', payload.new);
@@ -343,27 +347,37 @@ export const useTasks = () => {
     const newStatus = wasComplete ? 'incomplete' : 'complete';
     console.log('Toggling task status:', id, 'from', task.status, 'to', newStatus);
     
-    const result = await updateTask(id, { status: newStatus });
+    // Optimistic update for immediate UI response
+    setTasks(prev => prev.map(t => 
+      t.id === id ? { ...t, status: newStatus } : t
+    ));
     
-    if (result) {
-      if (newStatus === 'complete') {
-        // Award XP for completing task
-        try {
-          await awardXP(task.priority as 'low' | 'medium' | 'high');
-        } catch (error) {
-          console.error('Error awarding XP:', error);
-        }
-      } else {
-        // Deduct XP for unchecking task
-        try {
-          await deductXP(task.priority as 'low' | 'medium' | 'high');
-        } catch (error) {
-          console.error('Error deducting XP:', error);
-        }
+    try {
+      const result = await updateTask(id, { status: newStatus });
+      
+      if (result) {
+        // Handle XP in background for better performance
+        setTimeout(async () => {
+          try {
+            if (newStatus === 'complete') {
+              await awardXP(task.priority as 'low' | 'medium' | 'high');
+            } else {
+              await deductXP(task.priority as 'low' | 'medium' | 'high');
+            }
+          } catch (error) {
+            console.error('Error handling XP:', error);
+          }
+        }, 0);
       }
+      
+      return result;
+    } catch (error) {
+      // Revert optimistic update on error
+      setTasks(prev => prev.map(t => 
+        t.id === id ? { ...t, status: task.status } : t
+      ));
+      throw error;
     }
-    
-    return result;
   };
 
   const reorderTasks = async (reorderedTasks: Task[]) => {

@@ -87,10 +87,8 @@ export const useSubtasks = (parentTaskId: string) => {
         },
         (payload) => {
           console.log('Subtask real-time update:', payload);
-          // Add a small delay to ensure database consistency
-          setTimeout(() => {
-            fetchSubtasks();
-          }, 100);
+          // Immediate update for real-time feel
+          fetchSubtasks();
         }
       )
       .subscribe();
@@ -313,11 +311,6 @@ export const useSubtasks = (parentTaskId: string) => {
       
       // Update main task status based on new subtask progress
       await updateMainTaskStatus(newProgress);
-
-      // Refresh data to ensure consistency
-      setTimeout(() => {
-        fetchSubtasks();
-      }, 200);
 
     } catch (error) {
       console.error('Error toggling subtask:', error);
